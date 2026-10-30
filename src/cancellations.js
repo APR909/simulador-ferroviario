@@ -86,7 +86,7 @@ export function initializeCancellations(map) {
       const status=mode==='loading' ? 'CARGANDO' : mode==='offline' ? 'SIN SERVIDOR' : freshness==='stale' ? 'FEED ANTIGUO' : 'SIN DATOS';
       el('cancelBadge').textContent=status;el('cancelBadge').className='live-badge offline';el('cancelCount').textContent='—';
       el('cancelSourceDate').textContent=payload?.header_timestamp ? `Feed Renfe: ${cancellationTime(payload.header_timestamp)}` : 'No hay fecha de feed disponible.';
-      el('cancelCoverage').textContent=mode==='offline' ? 'Abre la aplicación con servidor.py para consultar Renfe.' :
+      el('cancelCoverage').textContent=mode==='offline' ? 'Las cancelaciones requieren servidor.py; GitHub Pages no ejecuta ese servidor.' :
         freshness==='stale' ? 'El feed está atrasado; no se muestran marcadores.' : 'Fuente no disponible: no se puede conocer el número de cancelaciones.';
       el('cancelListSummary').textContent='Sin datos disponibles';
       list.append(cancellationNode('p','No se puede concluir que no haya cancelaciones. Consulta la información oficial de los operadores.','cancel-list-empty'));
@@ -128,6 +128,7 @@ export function initializeCancellations(map) {
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
     try {
       const response=await fetch('./api/cancelaciones-av',{cache:'no-store',signal:controller.signal});
+      if(response.status===404){payload=null;mode='offline';return;}
       if(!response.ok)throw new Error(`HTTP ${response.status}`);
       const data=await response.json();if(!validCancellationPayload(data))throw new Error('Feed no válido');
       // Count the entire request duration against freshness; never extend it

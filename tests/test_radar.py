@@ -50,6 +50,12 @@ class RadarCacheTests(unittest.TestCase):
   self.assertIn('RadarDeTrenes',result['attribution']);self.assertEqual(len(calls),1)
   now[0]=NOW+91;result=cache.get(BOX)
   self.assertEqual(result['status'],'stale');self.assertIsNone(result['count']);self.assertEqual(result['vehicles'],[])
+ def test_source_flagged_stale_train_is_not_shown_as_active(self):
+  cache=radar.RadarCache(fetcher=lambda:feed(item(),{**item('ld-finished'),'stale':True}),clock=lambda:NOW,monotonic=lambda:0)
+  result=cache.get(BOX)
+  self.assertEqual(result['status'],'partial');self.assertEqual(result['count'],1)
+  self.assertEqual(result['excluded_reported_stale'],1)
+  self.assertEqual([v['label'] for v in result['vehicles']],['1'])
  def test_errors_and_future_header_are_not_zero(self):
   bad=radar.RadarCache(fetcher=lambda:feed(item(),when=NOW+31),clock=lambda:NOW,monotonic=lambda:0).get(BOX)
   self.assertEqual(bad['status'],'stale');self.assertIsNone(bad['count'])

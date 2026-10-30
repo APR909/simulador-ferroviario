@@ -8,7 +8,13 @@ Mapa ferroviario web y simulador didáctico. La vista **España** presenta vías
 
 ## 1. Inicio paso a paso
 
-### Con consultas a Renfe y a las LTV de Adif
+### GitHub Pages: trenes sin servidor propio
+
+En GitHub Pages la aplicación es estática y no puede ejecutar `servidor.py`. Cuando falta `/api/trenes`, el navegador consulta directamente la API pública con CORS de [RadarDeTrenes](https://radardetrenes.com/docs) para posiciones AV/LD/MD y Cercanías. Se actualiza como máximo cada 30 segundos por pestaña, requiere conexión y depende de la disponibilidad del intermediario. La cobertura es parcial; el reloj del dispositivo debe estar bien ajustado para que se validen correctamente las fechas. Los puntos de Cercanías consultados de esta forma no se animan si su hora GPS individual no puede verificarse.
+
+**Esta alternativa solo cubre posiciones:** en GitHub Pages las cancelaciones necesitan el servidor Python y se indican como **SIN SERVIDOR**; las LTV solo muestran la **INSTANTÁNEA** incluida, no una consulta actual. No se presenta ninguna de ellas como disponible en tiempo real.
+
+### Con consultas directas mediante el servidor Python
 
 1. Descomprime el proyecto y abre una terminal en su carpeta.
 2. Con Python 3 ejecuta:
@@ -31,11 +37,11 @@ Mapa ferroviario web y simulador didáctico. La vista **España** presenta vías
 
 Si el puerto 8000 ya está ocupado, inspecciona qué proceso lo utiliza antes de detenerlo. En Linux/macOS puedes usar `lsof -i :8000` o `ss -ltnp`; en Windows, `netstat -ano | findstr :8000`. También puedes elegir otro puerto con `--port 8001`.
 
-**El servidor incluido es necesario para consultar las fuentes.** Consulta las dos fuentes de posiciones GTFS-RT de Renfe y, como alternativa para AV/LD/MD si el GTFS directo falla, caduca o solo contiene posiciones descartadas, la API independiente de RadarDeTrenes. También consulta el feed fijo de cancelaciones de Renfe, el GTFS estático para etiquetas y horarios, y los servicios públicos de LTV y tramos de Adif. Ofrece API relativas al navegador. Un simple `python3 -m http.server` no proporciona esas API. Consultar cada cinco minutos no hace que la fuente LTV sea de actualización inmediata.
+**El servidor incluido amplía las fuentes disponibles.** Consulta las dos fuentes de posiciones GTFS-RT de Renfe y, como alternativa para AV/LD/MD si el GTFS directo falla, caduca o solo contiene posiciones descartadas, la API independiente de RadarDeTrenes. También consulta el feed fijo de cancelaciones de Renfe, el GTFS estático para etiquetas y horarios, y los servicios públicos de LTV y tramos de Adif. Ofrece API relativas al navegador. Un simple `python3 -m http.server` no proporciona esas API; en ese caso el navegador usa directamente RadarDeTrenes únicamente para posiciones. Consultar cada cinco minutos no hace que la fuente LTV sea de actualización inmediata.
 
 ### HTML autocontenido
 
-`simulador.html` incorpora código, estilos, ambas redes de vías, la infraestructura OSM y una **instantánea fechada** de LTV Adif. Puedes abrirlo directamente con doble clic: las redes, los datos estáticos y la simulación de Sevilla funcionan, y OpenFreeMap se carga si hay conexión y WebGL2. **Al abrirlo como archivo (`file://`) no dispone del servidor intermedio:** los paneles de posiciones y cancelaciones Renfe muestran `—`, no un cero ficticio, y las LTV se muestran como **INSTANTÁNEA**, sin afirmar que continúen vigentes. Para consultar fuentes, arranca `servidor.py` y visita <http://localhost:8000/simulador.html>.
+`simulador.html` incorpora código, estilos, ambas redes de vías, la infraestructura OSM y una **instantánea fechada** de LTV Adif. Puedes abrirlo directamente con doble clic: las redes, los datos estáticos y la simulación de Sevilla funcionan, y OpenFreeMap se carga si hay conexión y WebGL2. Desde un archivo (`file://`) o un alojamiento estático, el navegador puede consultar posiciones directamente a RadarDeTrenes si permite la conexión CORS; sin red mostrará `—`, no un cero ficticio. Las cancelaciones requieren el servidor Python y las LTV se muestran como **INSTANTÁNEA**, sin afirmar que continúen vigentes. Para disponer también de esas API, arranca `servidor.py` y visita <http://localhost:8000/simulador.html>.
 
 En un visor aislado sin acceso a la red, las vías y la simulación continúan sobre una cuadrícula. Pulsa **Reintentar** cuando vuelva a estar disponible el fondo. En una CSP restrictiva hay que permitir conexiones HTTPS a `tiles.openfreemap.org` y los workers de MapLibre; el HTML autocontenido usa workers `blob:`.
 
@@ -56,7 +62,7 @@ npx playwright install chromium
 node tests/browser-motion.mjs
 ```
 
-Esta prueba opcional comprueba interpolación, caducidad, filtros, movimiento reducido, móvil y el HTML aislado; no necesita datos reales. Para otro servidor se puede fijar `VIALAB_URL`.
+Esta prueba opcional comprueba interpolación, caducidad, filtros, movimiento reducido, móvil y el HTML aislado; no necesita datos reales. Para otro servidor se puede fijar `VIALAB_URL`. Para probar específicamente la ruta de GitHub Pages, inicia `python3 -m http.server 8001` en otra terminal y ejecuta `node tests/browser-pages.mjs`. `node tests/browser-pages-live.mjs` es una comprobación opcional con RadarDeTrenes real y requiere red; las cifras varían y pueden ser cero.
 
 ## 2. Qué representan los mapas
 
@@ -148,8 +154,8 @@ En Sevilla, la cifra principal es la **suma de posiciones recientes publicadas p
 - **Metro de Sevilla, TUSSAM/tranvía, Ouigo, iryo y otros operadores no están cubiertos** por esas dos fuentes. No se ha integrado una fuente pública verificada de posiciones para ellos. Los horarios GTFS estáticos no equivalen a posiciones reales.
 - Se cuentan vehículos identificables con coordenadas publicadas, no se deduce si están físicamente moviéndose. La cobertura del feed puede ser incompleta, y una suma entre fuentes podría contar dos veces un vehículo publicado por ambas.
 - Cada fuente muestra `0` solo si su respuesta es válida y reciente y no contiene posiciones válidas dentro de la zona. `—` significa que está ausente, ha fallado o su marca temporal no es reciente. Si solo una de las dos fuentes es utilizable, la suma se marca **parcial**.
-- El servidor consulta cada feed directo como máximo cada **30 s** y la alternativa RadarDeTrenes también como máximo cada **30 s**, con caché compartida entre navegadores. Renfe declara una frecuencia de 20 s para Cercanías y 15 s para AV/LD/MD; este prototipo solicita menos a menudo.
-- Se aplica un umbral de **90 s** a la cabecera GTFS-RT y, cuando existe, a la hora de cada posición; para RadarDeTrenes son obligatorias y se validan tanto `updatedAt` como la fecha individual `timestamp`. Se toleran hasta 30 s de diferencia hacia el futuro. Los datos fuera de ese umbral no se cuentan ni se dibujan como recientes. Si no se dispone de una fuente utilizable no se sustituyen los datos por ceros ni por posiciones simuladas.
+- El servidor consulta cada feed directo como máximo cada **30 s** y la alternativa RadarDeTrenes también como máximo cada **30 s**, con caché compartida entre navegadores. En un alojamiento estático se hace una consulta de la flota completa a RadarDeTrenes como máximo cada **30 s por pestaña**, compartida entre las vistas de España y Sevilla. Renfe declara una frecuencia de 20 s para Cercanías y 15 s para AV/LD/MD; este prototipo solicita menos a menudo.
+- Se aplica un umbral de **90 s** a la cabecera GTFS-RT y, cuando existe, a la hora de cada posición; para RadarDeTrenes son obligatorias y se validan `updatedAt` y `timestamp`. Se toleran hasta 30 s de diferencia hacia el futuro. En el navegador se compara con el reloj del dispositivo, que debe estar correctamente ajustado. En Cercanías vía RadarDeTrenes la marca puede reflejar la agregación y no un GPS individual verificable; se advierte y no se interpola. Los datos fuera del umbral y los registros marcados por RadarDeTrenes como posiblemente antiguos no se dibujan como recientes. Si no se dispone de una fuente utilizable no se sustituyen los datos por ceros ni por posiciones simuladas.
 - Algunos vehículos no llevan hora individual de medición. En ese caso se utiliza la hora de publicación de la cabecera, se indica **sin hora GPS** y no se puede asegurar que la posición sea tan reciente como la cabecera. Esta es una limitación del feed, no una extrapolación.
 - Los marcadores y recuentos envejecen también en el navegador: al superar el umbral dejan de presentarse como actuales aunque la pestaña no haya conseguido refrescar. Por prudencia, el navegador suma el tiempo completo de la consulta a la edad aparente; una conexión lenta puede hacer que se descarte algún dato todavía reciente.
 
@@ -214,6 +220,7 @@ src/scenario.js                    cinco rutas ficticias y horarios de ejemplo
 src/multiline.js                   motor multirruta y reservas OSM compartidas
 src/simulation.js                  motor anterior de una ruta, conservado para pruebas
 src/realtime.js                    caducidad y agregación de observaciones
+src/live-source.js                 fuente RadarDeTrenes directa para alojamiento estático
 src/live-motion.js                 interpolación visual acotada de posiciones recibidas
 src/national.js                    mapa nacional, capas y filtros de observaciones
 src/limitations.js                 capa y ficha LTV, validación y estado de frescura

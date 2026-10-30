@@ -46,9 +46,9 @@ test('el popup no interpreta el texto del operador y no ubica la avería',()=>{
   } finally {saved===undefined?delete globalThis.document:globalThis.document=saved;}
 });
 
-test('el HTML autónomo informa que necesita servidor para consultar y no incluye un feed simulado',async()=>{
+test('el HTML autónomo avisa que las cancelaciones necesitan servidor y no incluye un feed simulado',async()=>{
   const html=await readFile(new URL('../simulador.html',import.meta.url),'utf8');
   assert.match(html,/id="cancelToggle"/);assert.match(html,/id="cancelCount"/);
-  assert.match(html,/estación de salida prevista/);assert.match(html,/Abre la aplicación con servidor.py para consultar Renfe/);
+  assert.match(html,/estación de salida prevista/);assert.match(html,/Las cancelaciones requieren servidor.py; GitHub Pages no ejecuta ese servidor/);
   assert.doesNotMatch(html,/RAIL_CANCELLATION_SAMPLE/);
 });

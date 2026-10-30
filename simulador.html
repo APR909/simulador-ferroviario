@@ -979,7 +979,7 @@ html[data-theme="dark"] .live-popup .live-motion-caution,html[data-theme="dark"]
       <svg class="theme-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.2" stroke="currentColor" stroke-width="1.6"/><path d="M10 1.8v2M10 16.2v2M1.8 10h2m12.4 0h2M4.2 4.2l1.4 1.4m8.8 8.8 1.4 1.4m0-11.6-1.4 1.4m-8.8 8.8-1.4 1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       <span id="themeLabel">Oscuro</span>
     </button>
-    <div class="topbar-right"><span class="demo-badge"><span class="status-dot"></span> VÍAS REALES · SIMULACIÓN DIDÁCTICA</span><span class="version">v 0.8</span></div>
+    <div class="topbar-right"><span class="demo-badge"><span class="status-dot"></span> VÍAS REALES · SIMULACIÓN DIDÁCTICA</span><span class="version">v 0.9</span></div>
   </header>
 
   <div class="app-layout view" id="sevillaView">
@@ -1899,6 +1899,151 @@ function summarizeLive(payload, now = payload?.generated_at) {
   };
 }
 
+// --- live-source.js ---
+// A static host such as GitHub Pages cannot run servidor.py. Prefer our
+// same-origin API when present, otherwise consume the attributed public
+// RadarDeTrenes API directly in the browser (never a generic CORS proxy).
+
+const RADAR_BROWSER_URL='https://radardetrenes.com/api/v1/fleet?type=all';
+const RADAR_BROWSER_MAX_TRAINS=20000;
+const RADAR_BROWSER_MAX_BYTES=4_000_000;
+const RADAR_BROWSER_FRESH_SECONDS=90;
+const RADAR_BROWSER_BOXES={
+  sevilla:[{south:37.14,north:37.60,west:-6.28,east:-5.68}],
+  espana:[{south:35.0,north:44.4,west:-9.8,east:4.6}, {south:27.4,north:29.8,west:-18.5,east:-13.0}],
+};
+
+/** Parse an explicit RFC3339 timezone; never guess local time. */
+function parseRadarBrowserTime(value) {
+  if(typeof value!=='string' || value.length>80)return null;
+  const m=value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/);
+  if(!m)return null;
+  const [,year,month,day,hour,minute,second,zone]=m;
+  const y=Number(year),mo=Number(month),d=Number(day),hh=Number(hour),mm=Number(minute),ss=Number(second);
+  if(y<1970 || y>9999 || mo<1 || mo>12 || d<1 || d>new Date(Date.UTC(y,mo,0)).getUTCDate() || hh>23 || mm>59 || ss>59)return null;
+  if(zone!=='Z' && (Number(zone.slice(1,3))>23 || Number(zone.slice(4,6))>59))return null;
+  // Radar can send nanoseconds; normalize to milliseconds for browsers whose
+  // RFC3339 parser accepts only the three digits required by ECMAScript.
+  const normalized=value.replace(/\.(\d+)(?=Z|[+-]\d{2}:\d{2}$)/,(_,fraction)=>'.'+fraction.slice(0,3).padEnd(3,'0'));
+  const valueSeconds=Date.parse(normalized)/1000;
+  return Number.isFinite(valueSeconds) && valueSeconds>0 && valueSeconds<253402300800 ? valueSeconds : null;
+}
+function radarBrowserText(value,max=150) {return typeof value==='string' ? value.trim().slice(0,max) : '';}
+function radarBrowserInBoxes(lat,lon,boxes) {return boxes.some(b=>lat>=b.south&&lat<=b.north&&lon>=b.west&&lon<=b.east);}
+
+/** Validate the snapshot, preserve real identity and suppress contradictory fixes. */
+function parseRadarBrowserFleet(payload) {
+  const header=parseRadarBrowserTime(payload?.updatedAt);
+  if(!header || !Array.isArray(payload?.trains) || !Number.isInteger(payload.count) || payload.count!==payload.trains.length || payload.count>RADAR_BROWSER_MAX_TRAINS)
+    throw new Error('La respuesta RadarDeTrenes no contiene una instantánea válida.');
+  const byId=new Map(),invalid={long_distance:0,commuter:0,unknown:0};
+  for(const row of payload.trains) {
+    const type=row?.type;
+    if(type!=='long_distance'&&type!=='commuter'){invalid.unknown++;continue;}
+    const identifier=radarBrowserText(row.id,100),label=radarBrowserText(row.trainCode,100),timestamp=parseRadarBrowserTime(row.timestamp);
+    const latitude=row.latitude,longitude=row.longitude;
+    if(!identifier || !label || !timestamp || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude< -90 || latitude>90 || longitude< -180 || longitude>180) {invalid[type]++;continue;}
+    const trip=radarBrowserText(row.tripId,100);
+    const entry={id:`radar:${identifier}`,label,trip_id:trip,trip_ids:trip?[trip]:[],latitude,longitude,observed_at:timestamp,
+      // The independent commuter feed currently appears to stamp positions at
+      // aggregation time. Until an individual GPS time can be verified, do not
+      // animate its points or present that time as an exact GPS measurement.
+      time_basis:type==='commuter'?'feed':'vehicle',speed_mps:null,bearing:null,
+      service_name:radarBrowserText(row.productName,100)||null,product_category:radarBrowserText(row.productCategory,30),
+      origin:radarBrowserText(row.originName),destination:radarBrowserText(row.destinationName),
+      origin_code:radarBrowserText(row.originCode,30),destination_code:radarBrowserText(row.destinationCode,30),
+      source_provider:'radar',service_identification:'radar_product',reported_stale:row.stale===true,type,
+      _positions:[[latitude,longitude]]};
+    const key=`${type}:${identifier}`,previous=byId.get(key);
+    if(!previous || entry.observed_at>previous.observed_at)byId.set(key,entry);
+    else if(entry.observed_at===previous.observed_at){
+      if(!previous._positions.some(([a,b])=>a===latitude&&b===longitude))previous._positions.push([latitude,longitude]);
+      if(entry.service_name!==previous.service_name || entry.product_category!==previous.product_category){previous.service_name=null;previous.product_category='';}
+      if(entry.trip_id!==previous.trip_id){previous.trip_id='';previous.trip_ids=[];}
+      previous.reported_stale ||= entry.reported_stale;
+    }
+  }
+  const valid=[],ambiguous=[];
+  for(const value of byId.values()) {
+    if(value._positions.length>1)ambiguous.push(value);
+    else {const {_positions,...vehicle}=value;valid.push(vehicle);}
+  }
+  return {header,valid,ambiguous,invalid};
+}
+
+/** Scope and age the cached snapshot at the time it is displayed. */
+function radarBrowserSnapshot(parsed,scope,now,fetchedAt=now) {
+  const boxes=RADAR_BROWSER_BOXES[scope];if(!boxes || !Number.isFinite(now))throw new Error('Ámbito u hora no válidos.');
+  const fresh=recentTimestamp(parsed.header,now,RADAR_BROWSER_FRESH_SECONDS);
+  function makeFeed(type) {
+    const base={label:type==='commuter'?'Cercanías · RadarDeTrenes':'Renfe AV / Larga y Media Distancia · RadarDeTrenes',
+      dataset:'https://radardetrenes.com/docs',source_provider:'radar',access_mode:'browser',fetched_at:fetchedAt,
+      header_timestamp:parsed.header,attribution:'Datos de Renfe y ADIF, a través de RadarDeTrenes (servicio independiente)'};
+    if(!fresh)return {...base,status:'stale',count:null,vehicles:[],message:'La instantánea RadarDeTrenes está atrasada o es futura.'};
+    const area=parsed.valid.filter(v=>v.type===type&&radarBrowserInBoxes(v.latitude,v.longitude,boxes));
+    const recent=area.filter(v=>!v.reported_stale && recentTimestamp(v.observed_at,now,RADAR_BROWSER_FRESH_SECONDS));
+    const excludedStale=area.filter(v=>!v.reported_stale && !recentTimestamp(v.observed_at,now,RADAR_BROWSER_FRESH_SECONDS)).length;
+    const excludedReported=area.filter(v=>v.reported_stale).length;
+    const ambiguous=parsed.ambiguous.filter(v=>v.type===type&&v._positions.some(([lat,lon])=>radarBrowserInBoxes(lat,lon,boxes))).length;
+    // RadarDeTrenes does not report independent upstream availability per type;
+    // even a current empty snapshot is only partial coverage, not all trains.
+    return {...base,status:'partial',count:recent.length,vehicles:recent,excluded_stale:excludedStale,
+      excluded_reported_stale:excludedReported,excluded_ambiguous:ambiguous,
+      excluded_invalid:parsed.invalid[type]+parsed.invalid.unknown,feed_time_fallback:recent.filter(v=>v.time_basis==='feed').length};
+  }
+  const cercanias=makeFeed('commuter'),larga=makeFeed('long_distance');
+  return {scope,generated_at:now,fresh_seconds:RADAR_BROWSER_FRESH_SECONDS,cache_seconds:LIVE_POLL_MS/1000,
+    service_catalog:{status:'radar_product',matched:larga.vehicles.filter(v=>v.service_name).length,fetched_at:fetchedAt,dataset:'https://radardetrenes.com/docs'},
+    feeds:{cercanias,larga_distancia:larga},coverage:'Consulta directa a RadarDeTrenes; cobertura parcial de Renfe, no total de trenes.'};
+}
+
+/** One shared upstream fetch per browser per 30 s, including failed attempts. */
+function createLiveSource({fetchImpl=(...args)=>globalThis.fetch(...args),clock=()=>Date.now()/1000,
+  monotonic=()=>performance.now(),protocol=()=>globalThis.location?.protocol||'https:'}={}) {
+  let cached=null,lastAttempt=null,pending=null,lastError=null;
+  async function directSnapshot(scope) {
+    const elapsed=lastAttempt===null ? Infinity : monotonic()-lastAttempt;
+    if(!pending && (lastAttempt===null || elapsed<0 || elapsed>=LIVE_POLL_MS)) {
+      lastAttempt=monotonic();
+      pending=(async()=>{
+        const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
+        try {
+          const response=await fetchImpl(RADAR_BROWSER_URL,{method:'GET',credentials:'omit',cache:'default',signal:controller.signal});
+          if(!response.ok)throw new Error(`RadarDeTrenes HTTP ${response.status}`);
+          const length=Number(response.headers?.get?.('content-length'));
+          if(Number.isFinite(length) && length>RADAR_BROWSER_MAX_BYTES)throw new Error('Respuesta RadarDeTrenes demasiado grande.');
+          const text=await response.text();
+          if(text.length>RADAR_BROWSER_MAX_BYTES)throw new Error('Respuesta RadarDeTrenes demasiado grande.');
+          cached={parsed:parseRadarBrowserFleet(JSON.parse(text)),fetchedAt:clock()};lastError=null;
+        } catch(error) {cached=null;lastError=error;}
+        finally {clearTimeout(timeout);}
+      })();
+      pending.finally(()=>{pending=null;});
+    }
+    if(pending)await pending;
+    if(!cached)throw lastError || new Error('RadarDeTrenes no disponible.');
+    return radarBrowserSnapshot(cached.parsed,scope,clock(),cached.fetchedAt);
+  }
+  async function get(scope,{signal}={}) {
+    if(!RADAR_BROWSER_BOXES[scope])throw new Error('Ámbito no válido.');
+    if(/^https?:$/.test(protocol())) {
+      const url=scope==='espana'?'./api/trenes?ambito=espana':'./api/trenes';
+      try {
+        const response=await fetchImpl(url,{cache:'no-store',signal});
+        if(!response.ok)throw new Error(`API local HTTP ${response.status}`);
+        const payload=await response.json();
+        const validFeed=feed=>feed && ['fresh','partial','stale','error'].includes(feed.status);
+        if(payload?.scope!==scope || !Number.isFinite(payload.generated_at) || !validFeed(payload.feeds?.cercanias) || !validFeed(payload.feeds?.larga_distancia))throw new Error('API local no válida.');
+        return payload;
+      } catch(error) {if(signal?.aborted)throw error;}
+    }
+    return directSnapshot(scope);
+  }
+  return {get};
+}
+const sharedLiveSource=createLiveSource();
+function fetchLivePositions(scope,options) {return sharedLiveSource.get(scope,options);}
+
 // --- live-motion.js ---
 // Animate only BETWEEN two already received, individual GPS observations.
 // The straight interpolation is a visual estimate, not a railway route or
@@ -2540,7 +2685,7 @@ function initializeCancellations(map) {
       const status=mode==='loading' ? 'CARGANDO' : mode==='offline' ? 'SIN SERVIDOR' : freshness==='stale' ? 'FEED ANTIGUO' : 'SIN DATOS';
       el('cancelBadge').textContent=status;el('cancelBadge').className='live-badge offline';el('cancelCount').textContent='—';
       el('cancelSourceDate').textContent=payload?.header_timestamp ? `Feed Renfe: ${cancellationTime(payload.header_timestamp)}` : 'No hay fecha de feed disponible.';
-      el('cancelCoverage').textContent=mode==='offline' ? 'Abre la aplicación con servidor.py para consultar Renfe.' :
+      el('cancelCoverage').textContent=mode==='offline' ? 'Las cancelaciones requieren servidor.py; GitHub Pages no ejecuta ese servidor.' :
         freshness==='stale' ? 'El feed está atrasado; no se muestran marcadores.' : 'Fuente no disponible: no se puede conocer el número de cancelaciones.';
       el('cancelListSummary').textContent='Sin datos disponibles';
       list.append(cancellationNode('p','No se puede concluir que no haya cancelaciones. Consulta la información oficial de los operadores.','cancel-list-empty'));
@@ -2582,6 +2727,7 @@ function initializeCancellations(map) {
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
     try {
       const response=await fetch('./api/cancelaciones-av',{cache:'no-store',signal:controller.signal});
+      if(response.status===404){payload=null;mode='offline';return;}
       if(!response.ok)throw new Error(`HTTP ${response.status}`);
       const data=await response.json();if(!validCancellationPayload(data))throw new Error('Feed no válido');
       // Count the entire request duration against freshness; never extend it
@@ -2611,6 +2757,7 @@ function freshCoverage(unmatched,ambiguous,status,old,missingDates) {
 }
 
 // --- national.js ---
+
 
 
 
@@ -2663,10 +2810,14 @@ function nationalFeedStatus(feed) {
   const notes=[];
   if (feed.excluded_stale) notes.push(`${feed.excluded_stale} antigua(s) excluida(s)`);
   if (feed.excluded_ambiguous) notes.push(`${feed.excluded_ambiguous} ambigua(s) excluida(s)`);
-  if (feed.feed_time_fallback) notes.push(`${feed.feed_time_fallback} sin hora GPS individual`);
+  if (feed.excluded_reported_stale) notes.push(`${feed.excluded_reported_stale} marcada(s) como antiguas por RadarDeTrenes`);
+  if (feed.feed_time_fallback) notes.push(`${feed.feed_time_fallback} sin hora GPS individual verificada`);
   if (feed.excluded_invalid) notes.push(`${feed.excluded_invalid} registro(s) no válido(s)`);
   const prefix=feed.source_provider==='radar' ? 'RadarDeTrenes · Renfe' : 'Feed';
-  if (feed.source_provider==='radar') notes.push(feed.direct_status==='partial' ? 'GTFS directo sin posiciones válidas' : 'GTFS directo atrasado o no disponible');
+  if (feed.source_provider==='radar') {
+    if(feed.access_mode==='browser')notes.push('consulta directa desde el navegador');
+    else if(feed.direct_status)notes.push(feed.direct_status==='partial' ? 'GTFS directo sin posiciones válidas' : 'GTFS directo atrasado o no disponible');
+  }
   return `${prefix} ${nationalDisplayTime(feed.header_timestamp)}${notes.length ? ' · '+notes.join(' · ') : ''}`;
 }
 function nationalStatusClass(feed) { return feed.status==='fresh' ? 'feed-status-ok' : 'feed-status-warn'; }
@@ -2887,17 +3038,13 @@ async function initializeNationalMap(setupBasemap) {
   }
   async function refreshLive() {
     if (liveBusy) return;
-    if (!/^https?:$/.test(window.location.protocol)) { liveUnavailable('Abre con servidor.py para consultar Renfe.'); return; }
     liveBusy=true; lastRequestAt=performance.now(); nationalEl('nationalLiveRefresh').disabled=true;
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),20000);
     try {
-      const response=await fetch('./api/trenes?ambito=espana',{cache:'no-store',signal:controller.signal});
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const payload=await response.json();
-      if (payload?.scope!=='espana' || !payload.feeds || !Number.isFinite(payload.generated_at)) throw new Error('API nacional no disponible');
+      const payload=await fetchLivePositions('espana',{signal:controller.signal});
       // Count the full request duration conservatively as part of the age.
       livePayload=payload; liveReceivedAt=lastRequestAt; renderLive();
-    } catch (_) { liveUnavailable('Servidor o conexión no disponibles; usa servidor.py actualizado.'); }
+    } catch (_) { liveUnavailable('No se pudo consultar la API local ni RadarDeTrenes; revisa la conexión.'); }
     finally { clearTimeout(timeout);liveBusy=false;nationalEl('nationalLiveRefresh').disabled=false; }
   }
   nationalEl('nationalLiveRefresh').addEventListener('click',refreshLive);
@@ -2943,6 +3090,7 @@ async function initializeNationalMap(setupBasemap) {
 }
 
 // --- app.js ---
+
 
 
 
@@ -3346,11 +3494,14 @@ localAnimate.addEventListener('change',()=>localMotion.setEnabled(localAnimate.c
 function feedStatus(feed) {
   if (feed.status === 'stale') return `Dato atrasado · ${displayLiveTime(feed.header_timestamp)}`;
   if (feed.status === 'error') return 'No disponible';
-  const suffix = feed.excluded_stale ? ` · ${feed.excluded_stale} antigua(s) excluida(s)`
-    : feed.excluded_ambiguous ? ` · ${feed.excluded_ambiguous} posición(es) ambigua(s)`
-    : feed.feed_time_fallback ? ` · ${feed.feed_time_fallback} sin hora GPS` : '';
+  const notes=[];
+  if(feed.excluded_stale)notes.push(`${feed.excluded_stale} antigua(s) excluida(s)`);
+  if(feed.excluded_ambiguous)notes.push(`${feed.excluded_ambiguous} posición(es) ambigua(s)`);
+  if(feed.excluded_reported_stale)notes.push(`${feed.excluded_reported_stale} marcada(s) como antiguas por RadarDeTrenes`);
+  if(feed.feed_time_fallback)notes.push(`${feed.feed_time_fallback} sin hora GPS individual verificada`);
+  if(feed.access_mode==='browser')notes.push('consulta directa desde el navegador');
   const prefix=feed.source_provider==='radar' ? 'RadarDeTrenes · Renfe' : 'Feed';
-  return `${prefix} ${displayLiveTime(feed.header_timestamp)}${suffix}`;
+  return `${prefix} ${displayLiveTime(feed.header_timestamp)}${notes.length?' · '+notes.join(' · '):''}`;
 }
 function renderLive() {
   if (!livePayload) return;
@@ -3374,9 +3525,11 @@ function renderLive() {
       : feed.message || '';
     $(statusId).className = feed.status === 'fresh' ? 'feed-status-ok' : 'feed-status-warn';
   }
-  $('liveProvider').textContent=summary.larga.source_provider==='radar'
-    ? `AV / LD / MD: Renfe vía RadarDeTrenes (independiente); ${summary.larga.direct_status==='partial' ? 'feed directo sin posiciones válidas' : 'feed directo atrasado o no disponible'}.`
-    : 'AV / LD / MD: feed GTFS-RT directo de Renfe cuando está disponible.';
+  $('liveProvider').textContent=summary.larga.access_mode==='browser'
+    ? 'AV / LD / MD y Cercanías: datos de Renfe vía RadarDeTrenes (independiente), consultados desde el navegador.'
+    : summary.larga.source_provider==='radar'
+      ? `AV / LD / MD: Renfe vía RadarDeTrenes (independiente); ${summary.larga.direct_status==='partial' ? 'feed directo sin posiciones válidas' : 'feed directo atrasado o no disponible'}.`
+      : 'AV / LD / MD: feed GTFS-RT directo de Renfe cuando está disponible.';
   const lastFetch = Math.max(summary.cercanias.fetched_at || 0, summary.larga.fetched_at || 0);
   $('liveUpdated').textContent = `Consulta ${displayLiveTime(lastFetch)} · máx. cada 30 s`;
   const key = JSON.stringify(summary.vehicles.map(v => [v.source,v.source_provider,v.id,v.label,v.latitude,v.longitude,v.observed_at,v.time_basis,v.service_name,v.trip_id,v.origin,v.destination,v.origin_code,v.destination_code]));
@@ -3400,10 +3553,6 @@ function liveUnavailable(message) {
 }
 async function refreshLive() {
   if (liveBusy) return;
-  if (!/^https?:$/.test(window.location.protocol)) {
-    liveUnavailable('Abre el proyecto con servidor.py para consultar Renfe.');
-    return;
-  }
   liveBusy = true;
   $('liveRefresh').disabled = true;
   // Conservatively include the whole request in the apparent age, so network
@@ -3412,14 +3561,11 @@ async function refreshLive() {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
   try {
-    const response = await fetch('./api/trenes', { cache: 'no-store', signal: controller.signal });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const payload = await response.json();
-    if (!payload?.feeds || !Number.isFinite(payload.generated_at)) throw new Error('Formato no válido');
+    const payload = await fetchLivePositions('sevilla', { signal: controller.signal });
     livePayload = payload; liveReceivedAt = requestStartedAt;
     renderLive();
   } catch (_) {
-    liveUnavailable('Servidor o conexión no disponibles; usa servidor.py.');
+    liveUnavailable('No se pudo consultar la API local ni RadarDeTrenes; revisa la conexión.');
   } finally {
     clearTimeout(timeout); liveBusy = false; $('liveRefresh').disabled = false;
   }

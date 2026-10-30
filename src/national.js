@@ -1,8 +1,9 @@
-import { LIVE_POLL_MS, summarizeLive, isExpressService } from './realtime.js?v=11';
-import { createLiveMotionLayer, createLiveTrainIcon, liveIconKind } from './live-motion.js?v=11';
-import { initializeInfrastructure, infrastructureTrackPopup } from './infrastructure.js?v=11';
-import { initializeLimitations } from './limitations.js?v=11';
-import { initializeCancellations } from './cancellations.js?v=11';
+import { LIVE_POLL_MS, summarizeLive, isExpressService } from './realtime.js?v=12';
+import { fetchLivePositions } from './live-source.js?v=12';
+import { createLiveMotionLayer, createLiveTrainIcon, liveIconKind } from './live-motion.js?v=12';
+import { initializeInfrastructure, infrastructureTrackPopup } from './infrastructure.js?v=12';
+import { initializeLimitations } from './limitations.js?v=12';
+import { initializeCancellations } from './cancellations.js?v=12';
 
 // National infrastructure is an OSM way extract, not a list of services.
 const NATIONAL_STYLE = {
@@ -51,10 +52,14 @@ function nationalFeedStatus(feed) {
   const notes=[];
   if (feed.excluded_stale) notes.push(`${feed.excluded_stale} antigua(s) excluida(s)`);
   if (feed.excluded_ambiguous) notes.push(`${feed.excluded_ambiguous} ambigua(s) excluida(s)`);
-  if (feed.feed_time_fallback) notes.push(`${feed.feed_time_fallback} sin hora GPS individual`);
+  if (feed.excluded_reported_stale) notes.push(`${feed.excluded_reported_stale} marcada(s) como antiguas por RadarDeTrenes`);
+  if (feed.feed_time_fallback) notes.push(`${feed.feed_time_fallback} sin hora GPS individual verificada`);
   if (feed.excluded_invalid) notes.push(`${feed.excluded_invalid} registro(s) no válido(s)`);
   const prefix=feed.source_provider==='radar' ? 'RadarDeTrenes · Renfe' : 'Feed';
-  if (feed.source_provider==='radar') notes.push(feed.direct_status==='partial' ? 'GTFS directo sin posiciones válidas' : 'GTFS directo atrasado o no disponible');
+  if (feed.source_provider==='radar') {
+    if(feed.access_mode==='browser')notes.push('consulta directa desde el navegador');
+    else if(feed.direct_status)notes.push(feed.direct_status==='partial' ? 'GTFS directo sin posiciones válidas' : 'GTFS directo atrasado o no disponible');
+  }
   return `${prefix} ${nationalDisplayTime(feed.header_timestamp)}${notes.length ? ' · '+notes.join(' · ') : ''}`;
 }
 function nationalStatusClass(feed) { return feed.status==='fresh' ? 'feed-status-ok' : 'feed-status-warn'; }
@@ -275,17 +280,13 @@ export async function initializeNationalMap(setupBasemap) {
   }
   async function refreshLive() {
     if (liveBusy) return;
-    if (!/^https?:$/.test(window.location.protocol)) { liveUnavailable('Abre con servidor.py para consultar Renfe.'); return; }
     liveBusy=true; lastRequestAt=performance.now(); nationalEl('nationalLiveRefresh').disabled=true;
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),20000);
     try {
-      const response=await fetch('./api/trenes?ambito=espana',{cache:'no-store',signal:controller.signal});
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const payload=await response.json();
-      if (payload?.scope!=='espana' || !payload.feeds || !Number.isFinite(payload.generated_at)) throw new Error('API nacional no disponible');
+      const payload=await fetchLivePositions('espana',{signal:controller.signal});
       // Count the full request duration conservatively as part of the age.
       livePayload=payload; liveReceivedAt=lastRequestAt; renderLive();
-    } catch (_) { liveUnavailable('Servidor o conexión no disponibles; usa servidor.py actualizado.'); }
+    } catch (_) { liveUnavailable('No se pudo consultar la API local ni RadarDeTrenes; revisa la conexión.'); }
     finally { clearTimeout(timeout);liveBusy=false;nationalEl('nationalLiveRefresh').disabled=false; }
   }
   nationalEl('nationalLiveRefresh').addEventListener('click',refreshLive);

@@ -1,7 +1,7 @@
 // Animate only BETWEEN two already received, individual GPS observations.
 // The straight interpolation is a visual estimate, not a railway route or
 // an extrapolation. When a source expires the caller removes its markers.
-import { isExpressService } from './realtime.js?v=11';
+import { isExpressService } from './realtime.js?v=12';
 
 /** Static SVG markup; no text from the data source is inserted as HTML. */
 export function liveIconKind(vehicle) {

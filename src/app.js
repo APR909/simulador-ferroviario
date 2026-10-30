@@ -2,11 +2,12 @@ import { buildGraph, shortestPath } from './graph.js';
 import { pointAt, sliceRoute } from './geo.js';
 import { buildDemoScenario, makeCustomScenarioLine } from './scenario.js';
 import { MultiSimulation } from './multiline.js';
-import { LIVE_POLL_MS, summarizeLive, isExpressService } from './realtime.js?v=11';
-import { createLiveMotionLayer, createLiveTrainIcon, liveIconKind } from './live-motion.js?v=11';
-import { initializeNationalMap } from './national.js?v=11';
-import { initializeInfrastructure, infrastructureTrackPopup } from './infrastructure.js?v=11';
-import { initializeTheme } from './theme.js?v=11';
+import { LIVE_POLL_MS, summarizeLive, isExpressService } from './realtime.js?v=12';
+import { fetchLivePositions } from './live-source.js?v=12';
+import { createLiveMotionLayer, createLiveTrainIcon, liveIconKind } from './live-motion.js?v=12';
+import { initializeNationalMap } from './national.js?v=12';
+import { initializeInfrastructure, infrastructureTrackPopup } from './infrastructure.js?v=12';
+import { initializeTheme } from './theme.js?v=12';
 
 initializeTheme();
 
@@ -402,11 +403,14 @@ localAnimate.addEventListener('change',()=>localMotion.setEnabled(localAnimate.c
 function feedStatus(feed) {
   if (feed.status === 'stale') return `Dato atrasado · ${displayLiveTime(feed.header_timestamp)}`;
   if (feed.status === 'error') return 'No disponible';
-  const suffix = feed.excluded_stale ? ` · ${feed.excluded_stale} antigua(s) excluida(s)`
-    : feed.excluded_ambiguous ? ` · ${feed.excluded_ambiguous} posición(es) ambigua(s)`
-    : feed.feed_time_fallback ? ` · ${feed.feed_time_fallback} sin hora GPS` : '';
+  const notes=[];
+  if(feed.excluded_stale)notes.push(`${feed.excluded_stale} antigua(s) excluida(s)`);
+  if(feed.excluded_ambiguous)notes.push(`${feed.excluded_ambiguous} posición(es) ambigua(s)`);
+  if(feed.excluded_reported_stale)notes.push(`${feed.excluded_reported_stale} marcada(s) como antiguas por RadarDeTrenes`);
+  if(feed.feed_time_fallback)notes.push(`${feed.feed_time_fallback} sin hora GPS individual verificada`);
+  if(feed.access_mode==='browser')notes.push('consulta directa desde el navegador');
   const prefix=feed.source_provider==='radar' ? 'RadarDeTrenes · Renfe' : 'Feed';
-  return `${prefix} ${displayLiveTime(feed.header_timestamp)}${suffix}`;
+  return `${prefix} ${displayLiveTime(feed.header_timestamp)}${notes.length?' · '+notes.join(' · '):''}`;
 }
 function renderLive() {
   if (!livePayload) return;
@@ -430,9 +434,11 @@ function renderLive() {
       : feed.message || '';
     $(statusId).className = feed.status === 'fresh' ? 'feed-status-ok' : 'feed-status-warn';
   }
-  $('liveProvider').textContent=summary.larga.source_provider==='radar'
-    ? `AV / LD / MD: Renfe vía RadarDeTrenes (independiente); ${summary.larga.direct_status==='partial' ? 'feed directo sin posiciones válidas' : 'feed directo atrasado o no disponible'}.`
-    : 'AV / LD / MD: feed GTFS-RT directo de Renfe cuando está disponible.';
+  $('liveProvider').textContent=summary.larga.access_mode==='browser'
+    ? 'AV / LD / MD y Cercanías: datos de Renfe vía RadarDeTrenes (independiente), consultados desde el navegador.'
+    : summary.larga.source_provider==='radar'
+      ? `AV / LD / MD: Renfe vía RadarDeTrenes (independiente); ${summary.larga.direct_status==='partial' ? 'feed directo sin posiciones válidas' : 'feed directo atrasado o no disponible'}.`
+      : 'AV / LD / MD: feed GTFS-RT directo de Renfe cuando está disponible.';
   const lastFetch = Math.max(summary.cercanias.fetched_at || 0, summary.larga.fetched_at || 0);
   $('liveUpdated').textContent = `Consulta ${displayLiveTime(lastFetch)} · máx. cada 30 s`;
   const key = JSON.stringify(summary.vehicles.map(v => [v.source,v.source_provider,v.id,v.label,v.latitude,v.longitude,v.observed_at,v.time_basis,v.service_name,v.trip_id,v.origin,v.destination,v.origin_code,v.destination_code]));
@@ -456,10 +462,6 @@ function liveUnavailable(message) {
 }
 async function refreshLive() {
   if (liveBusy) return;
-  if (!/^https?:$/.test(window.location.protocol)) {
-    liveUnavailable('Abre el proyecto con servidor.py para consultar Renfe.');
-    return;
-  }
   liveBusy = true;
   $('liveRefresh').disabled = true;
   // Conservatively include the whole request in the apparent age, so network
@@ -468,14 +470,11 @@ async function refreshLive() {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
   try {
-    const response = await fetch('./api/trenes', { cache: 'no-store', signal: controller.signal });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const payload = await response.json();
-    if (!payload?.feeds || !Number.isFinite(payload.generated_at)) throw new Error('Formato no válido');
+    const payload = await fetchLivePositions('sevilla', { signal: controller.signal });
     livePayload = payload; liveReceivedAt = requestStartedAt;
     renderLive();
   } catch (_) {
-    liveUnavailable('Servidor o conexión no disponibles; usa servidor.py.');
+    liveUnavailable('No se pudo consultar la API local ni RadarDeTrenes; revisa la conexión.');
   } finally {
     clearTimeout(timeout); liveBusy = false; $('liveRefresh').disabled = false;
   }

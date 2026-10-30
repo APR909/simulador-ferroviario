@@ -86,7 +86,8 @@ def parse_radar(payload):
                    'product_category':text(item.get('productCategory'),30),
                    'origin':text(item.get('originName')),'destination':text(item.get('destinationName')),
                    'origin_code':text(item.get('originCode'),30),'destination_code':text(item.get('destinationCode'),30),
-                   'source_provider':'radar','service_identification':'radar_product', '_positions':[(lat,lon)]}
+                   'source_provider':'radar','service_identification':'radar_product',
+                   'reported_stale':item.get('stale') is True, '_positions':[(lat,lon)]}
         previous=by_id.get(identifier)
         if previous is None or candidate['observed_at']>previous['observed_at']:
             by_id[identifier]=candidate
@@ -95,6 +96,7 @@ def parse_radar(payload):
             # Conflicting metadata for the same fix cannot safely identify type.
             if candidate['service_name']!=previous['service_name'] or candidate['product_category']!=previous['product_category']:
                 previous['service_name']=None;previous['product_category']=''
+            previous['reported_stale'] = previous['reported_stale'] or candidate['reported_stale']
     valid=[];ambiguous=[]
     for entry in by_id.values():
         if len(entry['_positions'])>1:ambiguous.append(entry)
@@ -126,10 +128,14 @@ class RadarCache:
                 return {**meta,'status':'stale','count':None,'vehicles':[],'header_timestamp':header,
                         'message':'La instantánea RadarDeTrenes está atrasada o es futura.'}
             in_area=[v for v in parsed['all_vehicles'] if in_boxes(v['latitude'],v['longitude'],boxes)]
-            recent=[dict(v) for v in in_area if is_fresh(v['observed_at'],now)]
-            stale=len(in_area)-len(recent)
+            # Radar flags some long-distance records as possibly finished even
+            # if the upstream keeps publishing a recent coordinate. Do not show
+            # those as current trains; count the exclusion separately.
+            recent=[dict(v) for v in in_area if not v['reported_stale'] and is_fresh(v['observed_at'],now)]
+            stale=sum(1 for v in in_area if not v['reported_stale'] and not is_fresh(v['observed_at'],now))
+            reported=sum(1 for v in in_area if v['reported_stale'])
             ambiguous=sum(1 for v in parsed['ambiguous_vehicles'] if any(in_boxes(lat,lon,boxes) for lat,lon in v['_positions']))
             invalid=parsed['invalid']
-            return {**meta,'status':'partial' if stale or ambiguous or invalid else 'fresh','count':len(recent),
-                    'vehicles':recent,'header_timestamp':header,'excluded_stale':stale,
+            return {**meta,'status':'partial' if stale or reported or ambiguous or invalid else 'fresh','count':len(recent),
+                    'vehicles':recent,'header_timestamp':header,'excluded_stale':stale,'excluded_reported_stale':reported,
                     'excluded_ambiguous':ambiguous,'excluded_invalid':invalid,'feed_time_fallback':0}
