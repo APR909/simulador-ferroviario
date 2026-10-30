@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111d1a">
+  <script>try { document.documentElement.dataset.theme = localStorage.getItem('vialab-theme') === 'light' ? 'light' : 'dark'; } catch (_) { document.documentElement.dataset.theme = 'dark'; }</script>
+  <title>Vía Lab · Red ferroviaria de España y Sevilla</title>
+  <link rel="stylesheet" href="vendor/leaflet.css">
+  <link rel="stylesheet" href="vendor/maplibre-gl.css">
+  <link rel="stylesheet" href="styles.css?v=11">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand" aria-label="Vía Lab">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 30 30" fill="none"><path d="M9 5 4.8 25M21 5l4.2 20M9.8 8.5h10.4M8.4 15h13.2M7 21.5h16" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg></span>
+      <span class="brand-name">VÍA<span>LAB</span></span>
+      <span class="brand-divider"></span><span class="brand-caption">SIMULADOR FERROVIARIO</span>
+    </div>
+    <nav class="view-switch" aria-label="Cambiar de mapa">
+      <button type="button" id="showNational" aria-pressed="false">España <span>red nacional</span></button>
+      <button type="button" id="showSevilla" class="active" aria-pressed="true">Sevilla <span>simulador</span></button>
+    </nav>
+    <button type="button" id="themeToggle" class="theme-toggle" aria-label="Activar o desactivar modo oscuro" aria-pressed="true" title="Cambiar al modo claro">
+      <svg class="theme-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.2A7 7 0 0 1 7.8 3.5a7 7 0 1 0 8.7 8.7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      <svg class="theme-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.2" stroke="currentColor" stroke-width="1.6"/><path d="M10 1.8v2M10 16.2v2M1.8 10h2m12.4 0h2M4.2 4.2l1.4 1.4m8.8 8.8 1.4 1.4m0-11.6-1.4 1.4m-8.8 8.8-1.4 1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span id="themeLabel">Oscuro</span>
+    </button>
+    <div class="topbar-right"><span class="demo-badge"><span class="status-dot"></span> VÍAS REALES · SIMULACIÓN DIDÁCTICA</span><span class="version">v 0.8</span></div>
+  </header>
+
+  <div class="app-layout view" id="sevillaView">
+    <aside class="sidebar" aria-label="Panel de control">
+      <div class="side-intro">
+        <div class="eyebrow"><span class="index-tag">01 / CONTROL</span><span class="mini-line"></span></div>
+        <h1>Control de<br> circulación<span class="heading-dot">.</span></h1>
+        <p>Gestiona tráfico ficticio sobre vías OSM, junto a observaciones Renfe independientes.</p>
+      </div>
+
+
+      <section class="panel-section simulation-controls" aria-labelledby="sim-heading">
+        <div class="section-title"><h2 id="sim-heading">SIMULACIÓN FICTICIA</h2><span class="section-number">01</span></div>
+        <div class="clock-row"><div><span class="field-label">HORA SIMULADA</span><strong id="clock">08:00:00</strong></div><span class="state-pill" id="statePill"><span class="pill-dot"></span> EN PAUSA</span></div>
+        <div class="action-row">
+          <button class="primary-button" id="playButton" type="button"><svg id="playIcon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6 3.8v12.4L16 10 6 3.8Z"/></svg><span>Iniciar simulación</span></button>
+          <button class="icon-button" id="resetButton" type="button" aria-label="Reiniciar simulación" title="Reiniciar simulación"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4.6 7.3a5.9 5.9 0 1 1-.2 5.1M4.6 3.8v3.7h3.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <div class="speed-row"><span class="field-label">VELOCIDAD DEL TIEMPO</span><div class="segmented" role="group" aria-label="Velocidad de simulación"><button type="button" data-rate="1">1×</button><button type="button" data-rate="4" class="active" aria-pressed="true">4×</button><button type="button" data-rate="8">8×</button><button type="button" data-rate="16">16×</button><button type="button" data-rate="32">32×</button></div></div>
+        <p class="cycle-info"><span aria-hidden="true">↻</span><span><b>Circulación continua.</b> Los trenes vuelven virtualmente al origen cuando queda libre.</span></p>
+        <div class="dispatch-control">
+          <label class="field-label" for="managedTrain">GESTIONAR TREN SIMULADO</label>
+          <select id="managedTrain" aria-label="Seleccionar tren para gestionar"></select>
+          <div class="dispatch-actions">
+            <button class="incident-button" id="incidentButton" type="button" aria-pressed="false"><span class="incident-symbol">＋</span><span class="incident-label">Simular incidencia</span></button>
+            <button class="delay-button" id="delayButton" type="button" title="Retiene el tren de forma temporal o aplaza su salida">Retardo +60 s</button>
+          </div>
+          <p>La incidencia se mantiene hasta resolverla. El retardo termina solo.</p>
+        </div>
+        <details class="plan-details">
+          <summary>Editar velocidades y salidas <span>⌄</span></summary>
+          <div class="plan-body">
+            <p>Salidas en segundos desde las 08:00. Aplicar reinicia el escenario.</p>
+            <div class="plan-head"><span>TREN</span><span>KM/H</span><span>SALIDA · S</span></div>
+            <div id="planRows"></div>
+            <button type="button" class="plan-apply" id="applyPlan">Aplicar y reiniciar</button>
+          </div>
+        </details>
+      </section>
+
+      <section class="panel-section lines-section" aria-labelledby="lines-heading">
+        <div class="section-title"><h2 id="lines-heading">LÍNEAS FICTICIAS</h2><span class="count-pill" id="lineCount">05</span></div>
+        <div id="lineCards" class="line-cards"><p class="empty-small">Sin líneas seleccionadas.</p></div>
+        <p class="lines-hint">Toca una línea para centrarla en el mapa.</p>
+      </section>
+
+      <section class="panel-section services-section" aria-labelledby="services-heading">
+        <div class="section-title"><h2 id="services-heading">TRENES SIMULADOS</h2><span class="count-pill" id="trainCount">10</span></div>
+        <div id="trainCards" class="train-cards"><p class="empty-small">Selecciona un recorrido para crear los trenes.</p></div>
+      </section>
+
+      <section class="panel-section live-section" aria-labelledby="live-heading">
+        <div class="section-title"><h2 id="live-heading"><span class="live-dot"></span> POSICIONES DE RENFE</h2><span class="live-badge" id="liveBadge">VERIFICANDO</span></div>
+        <div class="live-total" aria-live="polite"><div><span class="field-label">VEHÍCULOS OBSERVADOS</span><strong id="liveTotal">—</strong></div><div class="live-total-copy"><b id="liveCoverage">Consultando fuentes…</b><span>en el rectángulo metropolitano</span></div></div>
+        <div class="feed-grid" aria-label="Estado de las fuentes Renfe">
+          <div class="feed-row"><span>Cercanías</span><strong id="liveCercanias">—</strong><small id="liveCercaniasStatus">Consultando…</small></div>
+          <div class="feed-row"><span>AV / LD / MD</span><strong id="liveLarga">—</strong><small id="liveLargaStatus">Consultando…</small></div>
+        </div>
+        <label class="national-train-option motion-option"><input type="checkbox" id="liveAnimate" checked><span>Animar entre observaciones</span></label>
+        <p id="liveMotionStatus" class="motion-disclaimer">Movimiento en línea recta estimado entre dos GPS recibidos; puede no seguir la vía y nunca avanza más allá del último dato.</p>
+        <p id="liveProvider" class="live-scope">Consultando el origen de AV / LD / MD…</p>
+        <p class="live-disclaimer">* Solo posiciones recientes publicadas por Renfe: <b>no es el total de trenes</b>. Metro, tranvía y otros operadores: sin posiciones incorporadas.</p>
+        <p class="live-scope">Zona: 37,14–37,60° N · 6,28–5,68° O</p>
+        <div class="live-footer"><span id="liveUpdated">A la espera de datos</span><button type="button" id="liveRefresh">Actualizar ↻</button></div>
+        <div class="live-sources">Origen: Renfe y ADIF · <a href="https://data.renfe.com/dataset/ubicacion-vehiculos" target="_blank" rel="noopener noreferrer">Cercanías</a> · <a href="https://data.renfe.com/dataset/posicion-vehiculos-av-ld-md" target="_blank" rel="noopener noreferrer">AV / LD / MD</a> · <a href="https://radardetrenes.com/docs" target="_blank" rel="noopener noreferrer">RadarDeTrenes, intermediario independiente</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0 (Renfe Datos Abiertos)</a></div>
+      </section>
+
+
+      <section class="panel-section infra-section" aria-labelledby="local-infra-heading">
+        <div class="section-title"><h2 id="local-infra-heading">ELEMENTOS DE VÍA · OSM</h2><span class="section-number">ESTÁTICOS</span></div>
+        <label class="infra-option"><input type="checkbox" id="localInfra-signal" checked><i class="infra-key signal"></i><span>Señales ferroviarias</span></label>
+        <label class="infra-option"><input type="checkbox" id="localInfra-switch" checked><i class="infra-key switch"></i><span>Agujas</span></label>
+        <label class="infra-option"><input type="checkbox" id="localInfra-crossing" checked><i class="infra-key crossing"></i><span>Cruces y pasos a nivel</span></label>
+        <label class="infra-option"><input type="checkbox" id="localInfra-milestone" checked><i class="infra-key milestone"></i><span>Hitos kilométricos</span></label>
+        <p id="localInfraStatus" class="infra-status" aria-live="polite">Cargando elementos OSM…</p>
+        <p class="infra-warning">Solo ubicaciones cartografiadas. No hay estado actual de señales, agujas ni barreras.</p>
+      </section>
+
+      <section class="panel-section import-section" aria-labelledby="data-heading">
+        <div class="section-title"><h2 id="data-heading">DATOS DEL MAPA</h2><span class="section-number">02</span></div>
+        <div class="data-line"><span class="data-icon" aria-hidden="true">⌁</span><div><strong id="datasetName">Sevilla metropolitana · OSM</strong><small id="networkMeta">Cargando red…</small></div><span class="data-check">✓</span></div>
+        <details class="import-details">
+          <summary>Trabajar con otra zona <span>⌄</span></summary>
+          <div class="details-body">
+            <p>Importa JSON de Overpass con vías ferroviarias, metro o tranvía y sus nodos. Elige una zona pequeña.</p>
+            <label class="file-label" for="osmFile">Cargar JSON de OpenStreetMap <span>↑</span></label>
+            <input id="osmFile" type="file" accept=".json,application/json" hidden>
+            <button class="text-button" id="restoreSample" type="button">Restaurar red de Sevilla ↺</button>
+          </div>
+        </details>
+      </section>
+      <div class="sidebar-foot"><span class="foot-icon">i</span><span>La simulación es ficticia y no representa señalización real. No apta para operar trenes.</span></div>
+    </aside>
+
+    <main class="map-panel">
+      <div class="map-header">
+        <div><div class="map-overline"><span class="map-overline-dot"></span> ENTORNO DE SIMULACIÓN</div><div class="map-heading"><h2>Mapa de vías</h2><span class="map-heading-separator">/</span><span id="mapArea">Sevilla metropolitana</span></div></div>
+        <div class="map-actions"><button type="button" class="map-button" id="fitButton" title="Ver toda la red" aria-label="Ver toda la red"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4M10 7v6m-3-3h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Ver red completa</span></button><button type="button" class="map-button" id="fitRouteButton" title="Ver todas las líneas simuladas" aria-label="Ver todas las líneas simuladas"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5" stroke="currentColor" stroke-width="1.5"/><path d="m12.2 12.2 4 4M6 8.5h5M8.5 6v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Ver líneas</span></button><button type="button" class="map-button accent" id="routeButton" title="Añadir un recorrido ficticio" aria-label="Añadir un recorrido ficticio"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="5" cy="15" r="2" stroke="currentColor" stroke-width="1.5"/><circle cx="15" cy="5" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M7 15h1.5a3 3 0 0 0 3-3V8a3 3 0 0 1 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Añadir línea</span></button></div>
+      </div>
+
+      <div class="map-wrap">
+        <div id="map" role="application" aria-label="Mapa ferroviario interactivo"></div>
+        <div class="map-notice" id="mapNotice" role="status"><span class="notice-dot"></span><span id="noticeText">Cinco líneas ficticias listas. Selecciona «Iniciar simulación».</span><button id="cancelRoute" type="button" hidden>Cancelar</button></div>
+        <div class="map-card"><div class="map-card-label">LÍNEAS SIMULADAS <span class="map-card-dot">●</span></div><div class="map-card-main"><strong id="routeLength">—</strong><span id="blockCount">—</span></div><div class="map-card-sub" id="routeDescription">Servicios y horarios ficticios</div><div class="base-status" aria-live="polite"><span id="baseStatusText">Conectando mapa de fondo…</span><button type="button" id="baseRetry" hidden>Reintentar</button></div></div>
+        <div class="map-legend" aria-label="Capas y leyenda del mapa">
+          <label><input type="checkbox" data-layer="rail" checked><i class="legend-line base"></i><span>Ferrocarril</span></label>
+          <label><input type="checkbox" data-layer="subway" checked><i class="legend-line subway"></i><span>Metro</span></label>
+          <label><input type="checkbox" data-layer="tram" checked><i class="legend-line tram"></i><span>Tranvía</span></label>
+          <div><i class="legend-point"></i><span>Renfe · movimiento estimado</span></div>
+          <div><i class="legend-line simulated"></i><span>Rutas simuladas</span></div>
+          <div><i class="infra-key signal"></i><span>Elemento OSM estático</span></div>
+        </div>
+      </div>
+
+      <div class="block-dock">
+        <div class="dock-heading"><div><div class="dock-title"><span class="dock-icon">▥</span> TRAMOS COMPARTIDOS <span class="virtual-badge">VIRTUALES</span></div><p>Recursos OSM comunes a varias líneas; no son señales reales</p></div><div class="dock-note"><span class="small-key filled"></span> ocupado <span class="small-key outlined"></span> reservado</div></div>
+        <div id="blockStrip" class="block-strip"><span class="empty-small">Sin tramos compartidos.</span></div>
+        <div id="dispatchEvent" class="dispatch-event" aria-live="polite">Sin movimientos todavía.</div>
+        <div class="dock-footer"><span id="dockSummary">—</span><span>DATOS DE VÍAS © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OPENSTREETMAP CONTRIBUTORS</a></span></div>
+      </div>
+    </main>
+  </div>
+
+  <div class="app-layout view national-view" id="nationalView" hidden>
+    <aside class="sidebar national-sidebar" aria-label="Capas de la red ferroviaria nacional">
+      <div class="side-intro national-intro">
+        <div class="eyebrow"><span class="index-tag">02 / RED NACIONAL</span><span class="mini-line"></span></div>
+        <h1>España en<br> movimiento<span class="heading-dot">.</span></h1>
+        <p>Vías ferroviarias de OpenStreetMap y posiciones observadas de Renfe cuando son recientes.</p>
+      </div>
+
+      <section class="panel-section national-cancellations" aria-labelledby="cancel-heading">
+        <div class="section-title"><h2 id="cancel-heading">CANCELACIONES AV · RENFE</h2><span id="cancelBadge" class="live-badge offline">CARGANDO</span></div>
+        <div class="cancel-card" aria-live="polite">
+          <div class="ltv-card-head"><span class="cancel-key" aria-hidden="true">×</span><div><b>Próximas salidas identificadas</b><small>AVE · Avlo · Avant · próximas 24 horas</small></div><strong id="cancelCount">—</strong></div>
+          <div id="cancelSourceDate" class="ltv-date">Consultando el feed de Renfe…</div>
+          <div id="cancelCoverage" class="ltv-date">Se comprobarán fecha y viaje antes de mostrar un marcador.</div>
+        </div>
+        <label class="national-train-option cancel-option"><input type="checkbox" id="cancelToggle" checked><span>Mostrar cancelaciones de viajes Renfe</span></label>
+        <p class="cancel-warning"><b>El símbolo marca la estación de salida prevista</b>, no la ubicación de una avería. Solo se muestran cancelaciones identificadas de Renfe; otras operadoras y causas no están cubiertas. El feed puede carecer de fecha individual.</p>
+        <details class="ltv-details"><summary id="cancelListSummary">Ver cancelaciones identificadas</summary><div id="cancelList" class="ltv-list"></div></details>
+        <div class="live-footer ltv-footer"><span>Consulta automática cada 30 s con servidor</span><button type="button" id="cancelRefresh">Consultar ↻</button></div>
+        <div class="live-sources ltv-sources">Origen de los datos: Renfe Operadora · CC BY 4.0 · <a href="https://data.renfe.com/dataset/horarios-viaje-alta-velocidad-larga-media-distancia" target="_blank" rel="noopener noreferrer">GTFS-RT</a> · <a href="https://data.renfe.com/dataset/horarios-de-alta-velocidad-larga-distancia-y-media-distancia" target="_blank" rel="noopener noreferrer">horarios GTFS</a></div>
+      </section>
+
+      <section class="panel-section national-limitations" aria-labelledby="ltv-heading">
+        <div class="section-title"><h2 id="ltv-heading">LIMITACIONES DE VELOCIDAD · AV</h2><span id="ltvBadge" class="live-badge offline">CARGANDO</span></div>
+        <div class="ltv-card" aria-live="polite">
+          <div class="ltv-card-head"><span class="ltv-key" aria-hidden="true">L</span><div><b>Referencias publicadas por Adif</b><small>Geometría de una limitación, no una señal física</small></div><strong id="ltvCount">—</strong></div>
+          <div id="ltvSourceDate" class="ltv-date">Consultando fecha de la fuente…</div>
+          <div id="ltvFileDate" class="ltv-date">Fecha del archivo: —</div>
+          <div id="ltvQueryDate" class="ltv-date">Cargando instantánea…</div>
+        </div>
+        <label class="national-train-option ltv-option"><input type="checkbox" id="ltvToggle" checked><span>Mostrar marcadores LTV de Adif</span></label>
+        <p class="ltv-warning"><b>La vigencia no está confirmada.</b> La fuente puede actualizarse con días de retraso: una LTV no equivale a una avería ni a un corte. No usar para operar trenes.</p>
+        <p id="ltvCoverage" class="national-hint">Clasificación por tramos y puntos kilométricos del catálogo de Adif.</p>
+        <details class="ltv-details"><summary id="ltvListSummary">Ver referencias localizadas</summary><div id="ltvList" class="ltv-list"></div></details>
+        <details class="ltv-details"><summary id="ltvUnlocatedSummary">Ver registros sin geometría</summary><ul id="ltvUnlocatedList" class="ltv-unlocated"></ul></details>
+        <div class="live-footer ltv-footer"><span>Consulta automática cada 5 min con servidor</span><button type="button" id="ltvRefresh">Consultar ↻</button></div>
+        <div class="live-sources ltv-sources">© Administrador de infraestructuras ferroviarias · <a href="https://www.arcgis.com/home/item.html?id=5e62ef71f0614bb3b007df238607e8bf" target="_blank" rel="noopener noreferrer">datos LTV</a> · <a href="https://ltv-adif.hub.arcgis.com/" target="_blank" rel="noopener noreferrer">visor oficial</a></div>
+        <a class="ltv-incidents-link" href="https://www.adif.es/viajeros/estado-de-la-red" target="_blank" rel="noopener noreferrer">Consultar cortes y avisos actuales en Adif ↗</a>
+      </section>
+
+      <section class="panel-section national-layers" aria-labelledby="national-layers-heading">
+        <div class="section-title"><h2 id="national-layers-heading">CAPAS DE INFRAESTRUCTURA</h2><span class="section-number">OSM</span></div>
+        <label class="national-layer"><input type="checkbox" data-national-layer="highspeed" checked><span class="national-swatch highspeed"></span><span><b>Alta velocidad</b><small>Etiquetada highspeed=yes</small></span><strong id="count-highspeed">—</strong></label>
+        <label class="national-layer"><input type="checkbox" data-national-layer="rail" checked><span class="national-swatch rail"></span><span><b>Ferrocarril convencional</b><small>Vías OSM railway=rail</small></span><strong id="count-rail">—</strong></label>
+        <label class="national-layer"><input type="checkbox" data-national-layer="narrow" checked><span class="national-swatch narrow"></span><span><b>Vía estrecha</b><small>Red ferroviaria</small></span><strong id="count-narrow">—</strong></label>
+        <label class="national-layer"><input type="checkbox" data-national-layer="urban" checked><span class="national-swatch urban"></span><span><b>Metro y tranvía</b><small>También en Canarias</small></span><strong id="count-urban">—</strong></label>
+        <label class="national-layer"><input type="checkbox" data-national-layer="service" checked><span class="national-swatch service"></span><span><b>Vías de servicio</b><small>Apartaderos y maniobras</small></span><strong id="count-service">—</strong></label>
+        <p class="national-hint">Cifras en fragmentos OSM, no en líneas comerciales. Toca una vía para consultar sus etiquetas.</p>
+      </section>
+
+      <section class="panel-section national-infra" aria-labelledby="national-infra-heading">
+        <div class="section-title"><h2 id="national-infra-heading">ELEMENTOS DE VÍA</h2><span class="section-number">OSM</span></div>
+        <label class="national-layer"><input type="checkbox" id="nationalInfra-signal" checked><i class="infra-key signal"></i><span><b>Señales ferroviarias</b><small>Sin estado en tiempo real</small></span><strong id="nationalInfraCount-signal">—</strong></label>
+        <label class="national-layer"><input type="checkbox" id="nationalInfra-switch" checked><i class="infra-key switch"></i><span><b>Agujas</b><small>Desvíos cartografiados</small></span><strong id="nationalInfraCount-switch">—</strong></label>
+        <label class="national-layer"><input type="checkbox" id="nationalInfra-crossing" checked><i class="infra-key crossing"></i><span><b>Cruces y pasos a nivel</b><small>Sin estado de barrera</small></span><strong id="nationalInfraCount-crossing">—</strong></label>
+        <label class="national-layer"><input type="checkbox" id="nationalInfra-milestone" checked><i class="infra-key milestone"></i><span><b>Hitos kilométricos</b><small>Marcadores PK en OSM</small></span><strong id="nationalInfraCount-milestone">—</strong></label>
+        <p id="nationalInfraStatus" class="infra-status" aria-live="polite">Cargando elementos OSM…</p>
+        <button type="button" id="nationalInfraExample" class="infra-example" disabled>Localizar una señal de ejemplo</button>
+        <p class="infra-warning">La señalización es información estática e incompleta, no muestra aspectos actuales ni sirve para operar trenes.</p>
+      </section>
+
+      <section class="panel-section national-live" aria-labelledby="national-live-heading">
+        <div class="section-title"><h2 id="national-live-heading"><span class="live-dot"></span> TRENES OBSERVADOS</h2><span id="nationalLiveBadge" class="live-badge">VERIFICANDO</span></div>
+        <div class="national-feed-card">
+          <div class="national-feed-title"><b>Renfe AV / Larga / Media</b><strong id="nationalAVCount">—</strong></div>
+          <small id="nationalAVStatus">Consultando…</small>
+          <small id="nationalExpressCount">Alta velocidad identificada: —</small>
+        </div>
+        <div class="national-feed-card">
+          <div class="national-feed-title"><b>Renfe Cercanías</b><strong id="nationalCCCount">—</strong></div>
+          <small id="nationalCCStatus">Consultando…</small>
+        </div>
+        <label class="national-train-option"><input type="checkbox" id="nationalLongDistance" checked><span>Mostrar AV / LD / MD de Renfe</span></label>
+        <label class="national-train-option"><input type="checkbox" id="nationalCommuter"><span>Mostrar Cercanías de Renfe</span></label>
+        <label class="national-train-option"><input type="checkbox" id="nationalExpressOnly" disabled><span>Solo alta velocidad / AVE / Avlo / Avant</span></label>
+        <label class="national-train-option motion-option"><input type="checkbox" id="nationalAnimate" checked><span>Animar entre observaciones</span></label>
+        <p id="nationalMotionStatus" class="motion-disclaimer">Movimiento en línea recta estimado entre dos GPS recibidos; puede no seguir la vía y nunca avanza más allá del último dato.</p>
+        <p id="nationalServiceInfo" class="national-hint">El feed AV también incluye larga y media distancia; no todos los servicios se pueden identificar.</p>
+        <p class="national-disclaimer"><b>No es el total de trenes.</b> Sin datos de Ouigo, iryo u otros operadores. No se extrapolan posiciones ni se muestran datos caducados como actuales.</p>
+        <div class="live-footer"><span id="nationalLiveUpdated">A la espera de datos</span><button type="button" id="nationalLiveRefresh">Actualizar ↻</button></div>
+        <div class="live-sources">Origen: Renfe y ADIF · <a href="https://data.renfe.com/dataset/posicion-vehiculos-av-ld-md" target="_blank" rel="noopener noreferrer">Renfe AV / LD / MD</a> · <a href="https://data.renfe.com/dataset/ubicacion-vehiculos" target="_blank" rel="noopener noreferrer">Cercanías</a> · <a href="https://radardetrenes.com/docs" target="_blank" rel="noopener noreferrer">RadarDeTrenes, intermediario independiente</a></div>
+      </section>
+      <div class="sidebar-foot"><span class="foot-icon">i</span><span>La clasificación de vía depende de las etiquetas OSM y puede ser incompleta. No es un sistema operativo ferroviario.</span></div>
+    </aside>
+
+    <main class="map-panel national-map-panel">
+      <div class="map-header national-map-header">
+        <div><div class="map-overline"><span class="map-overline-dot"></span> RED FERROVIARIA · OPENSTREETMAP</div><div class="map-heading"><h2>Mapa de España</h2><span class="map-heading-separator">/</span><span id="nationalArea">Península y Baleares</span></div></div>
+        <div class="region-actions" role="group" aria-label="Encuadrar una región"><button type="button" class="active" data-national-region="peninsula">Península</button><button type="button" data-national-region="canarias">Canarias</button><button type="button" data-national-region="toda">Toda España</button></div>
+      </div>
+      <div class="map-wrap national-map-wrap">
+        <div id="nationalMap" role="application" aria-label="Mapa nacional de vías y observaciones Renfe"></div>
+        <div class="map-notice national-notice" role="status"><span class="notice-dot"></span><span id="nationalNotice">Cargando la red ferroviaria nacional…</span></div>
+        <div class="ltv-map-status warning" id="ltvMapStatus" role="status">LTV ADIF · CARGANDO</div>
+        <div class="map-card national-map-card"><div class="map-card-label">INFRAESTRUCTURA OSM <span class="map-card-dot">●</span></div><div class="map-card-main"><strong id="nationalWayCount">—</strong><span>fragmentos</span></div><div class="map-card-sub" id="nationalDataDate">Instantánea OSM</div><div class="base-status" aria-live="polite"><span id="nationalBaseStatus">Conectando mapa de fondo…</span><button type="button" id="nationalBaseRetry" hidden>Reintentar</button></div></div>
+        <div class="map-legend national-legend" aria-label="Leyenda del mapa nacional">
+          <div><i class="national-swatch highspeed"></i><span>Alta velocidad OSM</span></div>
+          <div><i class="national-swatch rail"></i><span>Otras vías</span></div>
+          <div><i class="ltv-key">L</i><span>LTV Adif · no verificada</span></div>
+          <div><i class="cancel-key">×</i><span>Cancelación · salida prevista</span></div>
+          <div><i class="national-live-key express">AV</i><span>Alta velocidad identificada</span></div>
+          <div><i class="national-live-key">R</i><span>Renfe LD / MD</span></div>
+          <div><i class="national-live-key commuter">C</i><span>Cercanías · movimiento estimado</span></div>
+          <div><i class="infra-key signal"></i><span>Señal OSM estática</span></div>
+        </div>
+      </div>
+      <div class="national-bottom"><span id="nationalStationsStatus">Acerca el mapa para ver estaciones OSM.</span><span>DATOS © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OPENSTREETMAP CONTRIBUTORS</a></span></div>
+    </main>
+  </div>
+
+  <script src="vendor/leaflet.js"></script>
+  <script type="module" src="src/app.js?v=11"></script>
+</body>
+</html>

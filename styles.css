@@ -1,0 +1,286 @@
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1d302d;background:#f3f5f0;font-synthesis:none;text-rendering:optimizeLegibility;--ink:#213632;--muted:#788b84;--green:#175d54;--line:#e6ebe5;--orange:#c97832}
+*{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer}button:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid #58b5a5;outline-offset:3px}button:disabled{opacity:.45;cursor:not-allowed}
+.topbar{height:68px;background:#fff;border-bottom:1px solid #e5eae4;display:flex;align-items:center;justify-content:space-between;padding:0 31px;gap:16px}.brand,.topbar-right{display:flex;align-items:center}.brand{gap:10px;min-width:0}.brand-mark{width:32px;height:32px;display:grid;place-items:center;background:#205d52;color:#fff;border-radius:9px}.brand-mark svg{width:25px;height:25px}.brand-name{font-size:16px;letter-spacing:-.07em;font-weight:850;color:#183d36}.brand-name span{font-weight:450;margin-left:2px}.brand-divider{height:21px;width:1px;background:#e3e9e3;margin:0 8px}.brand-caption{font-size:10px;letter-spacing:.13em;font-weight:700;color:#8b9b91;white-space:nowrap}.topbar-right{gap:16px}.demo-badge{font-size:9px;letter-spacing:.1em;font-weight:800;color:#62847a;background:#f1f6f1;padding:8px 10px;border-radius:4px;white-space:nowrap}.status-dot,.map-overline-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#59a88e;margin-right:5px;vertical-align:1px}.version{font-size:10px;color:#a3b1a8;font-weight:700;white-space:nowrap}
+.app-layout{display:grid;grid-template-columns:364px minmax(0,1fr);height:calc(100vh - 68px);min-height:0}.sidebar{background:#fff;border-right:1px solid #e1e8e0;overflow-y:auto;padding:27px 29px 20px;scrollbar-width:thin;scrollbar-color:#d8e1d9 transparent}.side-intro{padding-bottom:25px}.eyebrow{display:flex;align-items:center;gap:9px}.index-tag{font-size:9px;color:#668d80;font-weight:800;letter-spacing:.13em}.mini-line{width:24px;height:1px;background:#cbdad1}.side-intro h1{margin:13px 0 9px;font-size:28px;line-height:1.08;letter-spacing:-.055em;font-weight:750;color:#1b3430}.heading-dot{color:#d48648}.side-intro p{margin:0;color:#87958d;font-size:12px;line-height:1.55;max-width:255px}
+.panel-section{padding:20px 0;border-top:1px solid var(--line)}.section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.section-title h2{font-size:10px;letter-spacing:.12em;margin:0;color:#425b53;font-weight:800}.section-number{color:#bdc8bf;font-size:10px;font-weight:700}.clock-row{display:flex;justify-content:space-between;align-items:end;margin-bottom:15px}.field-label{display:block;color:#98a89d;letter-spacing:.105em;font-size:9px;font-weight:800}.clock-row strong{font-size:24px;letter-spacing:.01em;font-variant-numeric:tabular-nums;font-weight:650;display:block;margin-top:3px}.state-pill{border-radius:4px;padding:6px 8px;background:#f1f4f0;color:#7e8e84;font-weight:800;font-size:9px;letter-spacing:.045em;white-space:nowrap}.state-pill.running{background:#e6f3ea;color:#3b8568}.pill-dot{display:inline-block;background:currentColor;width:5px;height:5px;border-radius:50%;vertical-align:2px;margin-right:3px}.action-row{display:flex;gap:8px}.primary-button{height:43px;border:1px solid #205c50;border-radius:5px;background:#205c50;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;flex:1;transition:background .15s}.primary-button:hover{background:#17483f}.primary-button svg{width:17px;height:17px}.icon-button{width:43px;height:43px;border:1px solid #e0e8df;background:#fff;color:#60786d;border-radius:5px;display:grid;place-items:center}.icon-button:hover,.map-button:hover{background:#f5f9f5}.icon-button svg{width:19px;height:19px}.speed-row{display:flex;align-items:center;justify-content:space-between;margin-top:17px;gap:6px}.segmented{display:flex;gap:2px;background:#f1f4ef;border-radius:5px;padding:3px}.segmented button{border:0;background:transparent;border-radius:3px;color:#93a299;min-width:34px;padding:5px 6px;font-weight:700;font-size:10px}.segmented button.active{background:#fff;color:#245f53;box-shadow:0 1px 3px #213d2514}.incident-button{width:100%;background:#fbfaf6;color:#9b704c;border:1px solid #eee9dc;border-radius:5px;min-height:37px;display:flex;align-items:center;gap:8px;text-align:left;padding:0 10px;margin-top:14px;font-size:10px;font-weight:700}.incident-button:hover,.incident-button.active{background:#fff3e5;border-color:#eecda9;color:#a35d20}.incident-symbol{font-size:17px;line-height:1}.incident-label{flex:1}.incident-arrow{font-size:13px}
+.count-pill{background:#eef4ee;color:#779188;font-size:9px;font-weight:800;padding:4px 6px;border-radius:4px}.train-cards{display:grid;gap:8px}.train-card{border:1px solid #e7ece6;border-radius:6px;padding:11px 12px;background:#fff;display:grid;grid-template-columns:30px 1fr auto;column-gap:9px;align-items:center}.train-icon{height:29px;width:29px;display:grid;place-items:center;border-radius:6px;background:#e9f3ed;color:#326d5e}.train-icon.follower{background:#fbf0e3;color:#bc7636}.train-icon svg{width:16px;height:16px}.train-name{font-weight:750;font-size:11px;color:#293f38}.train-role{font-size:9px;color:#a1ada4;margin-left:5px;font-weight:600}.train-status{font-size:10px;color:#91a096;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}.train-speed{text-align:right;font-weight:750;font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}.train-speed span{font-size:9px;color:#a5b2a9;font-weight:600}.services-section{padding-bottom:19px}.empty-small{font-size:11px;color:#9ba9a0;margin:0;line-height:1.4}
+.import-section{padding-bottom:16px}.data-line{display:flex;gap:10px;align-items:center}.data-icon{background:#f0f4ee;color:#6a897d;width:29px;height:29px;display:grid;place-items:center;border-radius:5px;font-size:19px}.data-line div{flex:1;min-width:0}.data-line strong,.data-line small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.data-line strong{font-size:11px;color:#3a5149}.data-line small{font-size:9px;color:#a0ada4;margin-top:4px}.data-check{width:18px;height:18px;display:grid;place-items:center;border-radius:50%;background:#edf5ec;color:#60a276;font-size:11px}.import-details{margin-top:15px}.import-details summary{list-style:none;display:flex;justify-content:space-between;font-size:10px;font-weight:750;color:#698579;cursor:pointer}.import-details summary::-webkit-details-marker{display:none}.details-body p{font-size:10px;color:#87978d;line-height:1.5}.details-body code{color:#527d6c}.file-label{display:flex;align-items:center;justify-content:space-between;border:1px solid #d8e5dc;color:#397365;font-size:10px;padding:10px;border-radius:4px;font-weight:750;cursor:pointer}.file-label:hover{background:#f3f8f3}.text-button{border:0;background:none;padding:10px 0 0;color:#81988a;font-size:10px;text-decoration:underline}.sidebar-foot{border-top:1px solid var(--line);padding:17px 0 4px;display:flex;gap:8px;color:#a0aea4;font-size:10px;line-height:1.5}.foot-icon{border:1px solid #bdc9bf;width:14px;height:14px;flex:none;text-align:center;line-height:12px;border-radius:50%;font-size:9px}
+.map-panel{min-width:0;min-height:0;padding:21px 25px 19px;background:#f3f5f0;display:flex;flex-direction:column;gap:15px}.map-header{display:flex;align-items:end;justify-content:space-between;gap:16px;min-height:46px}.map-overline{color:#8aa296;font-size:9px;letter-spacing:.1em;font-weight:800;margin-bottom:7px}.map-heading{display:flex;align-items:baseline;gap:11px}.map-heading h2{font-size:19px;letter-spacing:-.035em;margin:0;color:#223c34}.map-heading-separator{color:#c6d1c6}.map-heading #mapArea{font-size:11px;color:#8a9c90;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}.map-actions{display:flex;gap:7px}.map-button{display:flex;align-items:center;gap:7px;background:white;border:1px solid #e1e9df;border-radius:5px;padding:9px 11px;color:#667c6f;font-size:10px;font-weight:750;white-space:nowrap}.map-button svg{width:16px;height:16px}.map-button.accent{border-color:#bad7c5;background:#eaf4eb;color:#337961}.map-button.accent:hover,.map-button.accent.active{background:#d5ebd9}.map-wrap{position:relative;flex:1;min-height:250px;border:1px solid #e0e7df;border-radius:7px;overflow:hidden;background:#e7ece7}.map-wrap #map{position:absolute;inset:0;background-color:#e7ece7;background-image:linear-gradient(#dce5dc70 1px,transparent 1px),linear-gradient(90deg,#dce5dc70 1px,transparent 1px);background-size:32px 32px}.leaflet-container{font:inherit}.leaflet-control-zoom{border:0!important;box-shadow:0 3px 18px #304d3c1c!important;margin:15px!important}.leaflet-control-zoom a{color:#426257!important;border:1px solid #e4ebe3!important;background:#fff!important;width:30px!important;height:30px!important;line-height:28px!important;font-weight:400!important}.leaflet-control-zoom-in{border-radius:4px 4px 0 0!important}.leaflet-control-zoom-out{border-radius:0 0 4px 4px!important}.leaflet-control-attribution{font-size:9px!important;color:#75857b!important;background:#fffffff0!important}.leaflet-control-attribution a{color:#597f6c!important}.leaflet-container.route-picking{cursor:crosshair}
+.map-notice{position:absolute;z-index:500;left:50%;top:14px;transform:translateX(-50%);max-width:calc(100% - 150px);display:flex;align-items:center;gap:8px;min-height:34px;padding:8px 11px;border:1px solid #e3ebe1;border-radius:5px;background:#fffffff2;box-shadow:0 3px 18px #2d483015;color:#698278;font-size:10px;line-height:1.35;font-weight:650}.notice-dot{width:6px;height:6px;border-radius:50%;background:#69aa8b;flex:none}.map-notice.warn .notice-dot{background:#d18743}.map-notice.error .notice-dot{background:#c85a4e}.map-notice button{border:0;background:none;color:#aa6e41;font-size:10px;font-weight:800;padding:0 0 0 6px;white-space:nowrap}.map-card{position:absolute;z-index:400;left:16px;top:16px;background:#fffffff5;border:1px solid #e4eae2;border-radius:5px;box-shadow:0 3px 18px #2d483015;padding:12px 14px;min-width:172px}.map-card-label{display:flex;justify-content:space-between;gap:15px;color:#8ca097;letter-spacing:.1em;font-size:8px;font-weight:800}.map-card-dot{color:#6cac87;font-size:8px}.map-card-main{display:flex;gap:9px;align-items:baseline;margin-top:7px}.map-card-main strong{font-size:19px;letter-spacing:-.04em}.map-card-main span{font-size:9px;color:#8e9c92}.map-card-sub{margin-top:5px;font-size:9px;color:#a0aca2}.map-legend{position:absolute;z-index:400;left:16px;bottom:20px;background:#fffffff2;border:1px solid #e5ebe3;border-radius:5px;box-shadow:0 3px 18px #2d483015;padding:10px 12px;display:flex;gap:13px;flex-wrap:wrap}.map-legend div{display:flex;align-items:center;gap:6px;font-size:9px;color:#72877c;font-weight:650;white-space:nowrap}.legend-line{width:17px;height:3px;border-radius:5px;background:#899b92}.legend-line.reserved{background:#2a8a78}.legend-line.occupied{background:#d7853f}.legend-line.free{background:#5f7970}
+.train-marker{background:transparent;border:0}.train-pin{position:relative;display:flex;align-items:center;gap:3px;filter:drop-shadow(0 2px 3px #0003);white-space:nowrap}.train-pin-bubble{width:29px;height:29px;border:3px solid #fff;border-radius:50%;display:grid;place-items:center;background:#286d60;color:white}.train-pin.follower .train-pin-bubble{background:#ce803b}.train-pin svg{width:14px;height:14px}.train-pin-label{color:#31584d;background:#fff;border-radius:3px;font-size:9px;font-weight:800;padding:4px 5px}.train-pin.follower .train-pin-label{color:#a45e26}
+.block-dock{background:#fff;border:1px solid #e4eae2;border-radius:7px;padding:16px 18px 13px}.dock-heading{display:flex;justify-content:space-between;gap:15px;align-items:flex-start}.dock-title{font-size:9px;letter-spacing:.105em;color:#496259;font-weight:850;display:flex;align-items:center;gap:7px}.dock-icon{color:#82a396;font-size:15px;line-height:10px}.virtual-badge{font-size:8px;letter-spacing:.07em;color:#8da499;background:#f3f6f1;border-radius:3px;padding:4px 5px}.dock-heading p{margin:7px 0 0;font-size:10px;color:#9daaa0}.dock-note{font-size:9px;color:#9ba9a0;white-space:nowrap}.small-key{display:inline-block;width:7px;height:7px;border-radius:2px;margin-left:10px;background:#d7833b}.small-key.outlined{background:#dfefe7;border:1px solid #5daa89}.block-strip{display:flex;gap:5px;overflow:auto;margin-top:14px;padding-bottom:3px;scrollbar-width:thin}.block-chip{min-width:62px;flex:1;border:1px solid #e7ece7;background:#f7f9f6;border-radius:4px;padding:8px 7px}.block-chip.reserved{border-color:#cbe3d6;background:#edf7ef}.block-chip.occupied{border-color:#f0d6bc;background:#fff4e9}.block-id{font-size:9px;font-weight:800;letter-spacing:.04em;color:#859a8e}.block-chip.reserved .block-id{color:#4f8b72}.block-chip.occupied .block-id{color:#b97136}.block-owner{display:block;margin-top:4px;font-size:9px;color:#a7b4aa;white-space:nowrap}.block-chip.reserved .block-owner{color:#78a38a}.block-chip.occupied .block-owner{color:#c98c56}.dock-footer{display:flex;justify-content:space-between;gap:10px;margin-top:11px;color:#afbab1;font-size:8px;font-weight:700;letter-spacing:.04em;flex-wrap:wrap}.dock-footer a{color:#8ea398;text-decoration:none}.dock-footer a:hover{text-decoration:underline}
+@media(max-height:820px) and (min-width:901px){.sidebar{padding-top:19px}.side-intro{padding-bottom:17px}.side-intro h1{font-size:25px;margin:9px 0 7px}.panel-section{padding-top:15px;padding-bottom:15px}.section-title{margin-bottom:12px}.map-panel{padding-top:17px;gap:12px}.block-dock{padding:13px 16px 10px}.block-strip{margin-top:10px}.block-chip{padding:6px 7px}}
+@media(max-width:900px){.app-layout{grid-template-columns:300px minmax(0,1fr)}.sidebar{padding-left:21px;padding-right:21px}.map-panel{padding-left:15px;padding-right:15px}.map-card{top:57px}.map-notice{max-width:calc(100% - 60px)}.map-button{padding:8px}.map-button span{display:none}.map-heading #mapArea{max-width:130px}}
+@media(max-width:650px){.topbar{height:57px;padding:0 16px}.brand-divider,.brand-caption,.version{display:none}.demo-badge{font-size:8px}.app-layout{display:flex;height:auto;flex-direction:column}.sidebar{border-right:0;overflow:visible;padding:20px 18px 0}.side-intro{padding-bottom:16px}.side-intro h1{font-size:25px}.side-intro h1 br{display:none}.panel-section{padding:16px 0}.train-cards{grid-template-columns:1fr 1fr}.train-card{grid-template-columns:25px 1fr;gap:7px}.train-icon{width:25px;height:25px}.train-speed{grid-column:2;text-align:left}.train-status{max-width:110px}.sidebar-foot{padding-bottom:15px}.map-panel{padding:18px 13px 14px;gap:12px}.map-wrap{height:56vh;min-height:340px;flex:none}.map-header{align-items:end}.map-heading h2{font-size:17px}.map-heading #mapArea{max-width:115px}.map-card{left:10px;top:58px;padding:9px 10px;min-width:145px}.map-legend{left:10px;bottom:23px;gap:9px;padding:8px}.map-legend div{font-size:8px}.map-notice{font-size:9px;max-width:calc(100% - 50px);top:10px}.dock-note{display:none}}
+/* A basemap is optional; the railway overlay remains available offline. */
+.base-status{border-top:1px solid #edf1ea;margin-top:8px;padding-top:7px;display:flex;align-items:center;justify-content:space-between;gap:7px;font-size:9px;color:#8ca299;white-space:nowrap}.base-status.unavailable{color:#a17f59}.base-status button{border:0;background:none;padding:0;color:#95653e;text-decoration:underline;font-size:9px;font-weight:750}.base-status button[hidden]{display:none}
+
+/* Real observations stay visually separate from the fictitious simulator. */
+.live-section{padding-top:19px;padding-bottom:20px}
+.live-section .section-title{margin-bottom:12px}
+.live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#4d9d87;margin-right:5px;vertical-align:1px}
+.live-badge{font-size:8px;letter-spacing:.055em;font-weight:800;background:#edf4ee;color:#598375;padding:5px 6px;border-radius:4px;white-space:nowrap}
+.live-badge.partial,.live-badge.offline{background:#fbf2e7;color:#9a6c3e}
+.live-badge.fresh{background:#e6f3ed;color:#3e8068}
+.live-total{display:flex;gap:14px;align-items:center;background:#f0f7f3;border:1px solid #e3efe6;border-radius:6px;padding:11px 12px}
+.live-total>div:first-child{min-width:100px}
+.live-total strong{display:block;font-size:29px;line-height:1.1;letter-spacing:-.05em;color:#1d6658;margin-top:4px;font-variant-numeric:tabular-nums}
+.live-total-copy{display:flex;flex-direction:column;gap:4px;font-size:9px;color:#84998c;line-height:1.3}
+.live-total-copy b{font-size:10px;color:#4b7465;line-height:1.3}
+.feed-grid{display:grid;gap:6px;margin-top:10px}
+.feed-row{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center;border-bottom:1px solid #f0f3ef;padding:4px 2px 6px}
+.feed-row span{font-size:10px;color:#50695f;font-weight:750}
+.feed-row strong{font-size:13px;line-height:1;color:#385c50;font-variant-numeric:tabular-nums}
+.feed-row small{grid-column:1 / -1;color:#92a297;font-size:9px;line-height:1.35}
+.feed-row small.feed-status-warn{color:#b47d43}
+.live-disclaimer{margin:10px 0 9px;font-size:9px;line-height:1.5;color:#8a9a90}
+.live-disclaimer b{color:#637c70}
+.live-footer{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;color:#9baaa0;font-size:9px;line-height:1.4}
+.live-footer button{font-size:9px;font-weight:800;white-space:nowrap;color:#397966;border:0;background:none;padding:0}
+.live-footer button:hover{text-decoration:underline}
+.live-sources{font-size:9px;color:#a5b1a8;margin-top:6px}
+.live-sources a{color:#799488;text-decoration:underline;text-underline-offset:2px}
+.map-legend{align-items:center}
+.map-legend label{display:flex;align-items:center;gap:5px;font-size:9px;color:#72877c;font-weight:650;white-space:nowrap;cursor:pointer}
+.map-legend label input{width:12px;height:12px;margin:0;accent-color:#397d69}
+.legend-line.base{background:#526e65}
+.legend-line.subway{background:#8d60af}
+.legend-line.tram{background:#d77d3c}
+.legend-line.simulated{background:#2a8a78;height:5px}
+.legend-point{width:10px;height:10px;border-radius:50%;background:#2477b4;border:2px solid #d7eaf9;box-shadow:0 0 0 1px #2477b4}
+.real-train-marker{border:0;background:transparent}
+.real-train-pin{width:24px;height:24px;display:grid;place-items:center;border-radius:50%;border:3px solid #fff;background:#2477b4;color:#fff;font:800 10px/1 system-ui,sans-serif;box-shadow:0 2px 5px #17394c66}
+.live-popup small,.live-popup strong{display:block}
+.live-popup small{font-size:9px;font-weight:800;color:#4885ae;letter-spacing:.05em}
+.live-popup strong{margin-top:5px;font-size:14px;color:#233e4b}
+.live-popup p{margin:5px 0 0;font-size:10px;line-height:1.4;color:#657f87}
+@media(max-width:900px){.live-total{gap:8px;padding:10px}.live-total>div:first-child{min-width:92px}.live-badge{font-size:7px}}
+@media(max-width:650px){.live-section{padding-top:14px;padding-bottom:15px}.live-total>div:first-child{min-width:115px}.feed-grid{grid-template-columns:1fr 1fr;gap:10px}.map-legend{max-width:calc(100% - 20px);gap:7px 9px}.map-legend label,.map-legend div{font-size:8px}.map-legend label input{width:11px;height:11px}}
+/* On a phone, put the requested map immediately after the live count. */
+@media(max-width:650px){
+  .sidebar{display:contents}
+  .sidebar>.side-intro{order:0;background:#fff;padding:20px 18px 16px}
+  .sidebar>.live-section{order:1;background:#fff;padding:16px 18px}
+  .map-panel{order:2}
+  .sidebar>.simulation-controls{order:3;background:#fff;padding:16px 18px}
+  .sidebar>.services-section{order:4;background:#fff;padding:16px 18px}
+  .sidebar>.import-section{order:5;background:#fff;padding:16px 18px}
+  .sidebar>.sidebar-foot{order:6;background:#fff;margin:0;padding:15px 18px}
+}
+.live-scope{margin:-3px 0 8px;font-size:9px;line-height:1.4;color:#9baaa0}
+/* Explain the virtual return so that a new departure is not mistaken for live traffic. */
+.cycle-info{display:flex;gap:8px;align-items:flex-start;margin:14px 0 0;padding:9px 10px;border:1px solid #e4eee5;border-radius:5px;background:#f5f9f4;color:#7a9285;font-size:9px;line-height:1.45}
+.cycle-info>span:first-child{color:#4c9079;font-size:16px;line-height:1}
+.cycle-info b{color:#4f7868}
+.train-status{white-space:normal;overflow:visible;max-width:none}
+@media(max-width:480px){
+  .map-header>div:first-child{min-width:0;flex:1}
+  .map-heading{gap:6px;min-width:0}
+  .map-heading h2{white-space:nowrap;flex:none}
+  .map-heading #mapArea{max-width:90px;min-width:0}
+  .map-actions{gap:4px}
+  .map-button{padding:7px}
+}
+
+/* Multi-line dispatcher. Route colours distinguish fictitious services from
+   blue Renfe observations; shared-resource chips are virtual, not signals. */
+select{font:inherit}
+select:focus-visible,input:focus-visible{outline:3px solid #58b5a5;outline-offset:2px}
+.speed-row{flex-wrap:wrap}.segmented button{min-width:28px;padding:5px 5px}
+.dispatch-control{margin-top:15px}.dispatch-control select{display:block;width:100%;margin-top:7px;padding:9px 10px;border:1px solid #dce7dd;border-radius:5px;background:#fff;color:#405e53;font-size:11px;font-weight:700}
+.dispatch-actions{display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:7px}.dispatch-actions .incident-button{margin:0;min-height:37px}.delay-button{border:1px solid #dce8df;border-radius:5px;background:#f4f8f3;color:#568071;font-size:10px;font-weight:750;padding:0 9px}.delay-button:hover{background:#eaf4ea}.dispatch-control p{margin:7px 0 0;color:#9aa99e;font-size:9px;line-height:1.4}
+.plan-details{margin-top:16px;border-top:1px solid #edf2ec;padding-top:12px}.plan-details summary{display:flex;justify-content:space-between;list-style:none;cursor:pointer;color:#477969;font-size:10px;font-weight:800}.plan-details summary::-webkit-details-marker{display:none}.plan-body p{font-size:10px;line-height:1.5;color:#899a8e}.plan-head,.plan-row{display:grid;grid-template-columns:1fr 66px 74px;gap:7px;align-items:center}.plan-head{font-size:8px;letter-spacing:.07em;color:#9baaa0;font-weight:800;margin:12px 0 5px}.plan-row{border-top:1px solid #f1f4f0;padding:6px 0}.plan-train{font-size:10px;font-weight:800;color:#4e6c60}.plan-train small{display:block;color:#9aaca0;font-weight:600;font-size:9px;margin-top:2px}.plan-row input{width:100%;min-width:0;border:1px solid #dce7dd;border-radius:4px;background:#fff;padding:6px 5px;font-size:10px;color:#415c51;font-variant-numeric:tabular-nums}.plan-apply{width:100%;margin-top:9px;padding:9px;border:1px solid #b9d4c4;border-radius:4px;background:#eef7ef;color:#377863;font-size:10px;font-weight:800}.plan-apply:hover{background:#e0f1e3}
+.line-cards{display:grid;gap:5px}.line-card{display:grid;grid-template-columns:5px 1fr auto;align-items:center;gap:9px;text-align:left;background:#fff;border:1px solid #ebf0e9;border-radius:5px;padding:8px;width:100%;min-width:0}.line-card:hover{background:#f6faf5;border-color:#cfe2d5}.line-swatch{height:27px;width:5px;border-radius:4px;background:var(--line-color,#4b8a78)}.line-copy{min-width:0}.line-name{display:block;font-size:10px;font-weight:750;color:#405b51;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.line-name b{color:var(--line-color,#4b8a78);margin-right:4px}.line-sub{display:block;font-size:9px;color:#9baba0;margin-top:3px}.line-count{font-size:9px;color:#83a095;font-weight:700;white-space:nowrap}.lines-hint{font-size:9px;color:#a3afa6;margin:8px 0 0}
+.train-card{text-align:left;width:100%;cursor:pointer}.train-card:hover{border-color:#c8dfcf;background:#fbfdfb}.train-card.selected{border-color:#97c8ae;background:#f5faf5}.train-icon{background:color-mix(in srgb,var(--train-color,#286d60) 12%,white);color:var(--train-color,#286d60)}.train-role{color:#8fa399}.train-status{font-size:9px;line-height:1.3}.train-speed{color:#526e60}
+.train-pin-bubble{background:var(--train-color,#286d60)}.train-pin-label{color:var(--train-color,#286d60)}
+.block-chip{flex:0 0 67px}.dispatch-event{font-size:9px;color:#8c9f93;margin-top:8px;line-height:1.35;min-height:12px}
+@media(max-width:650px){
+  .sidebar>.simulation-controls{order:1;background:#fff;padding:16px 18px}
+  .map-panel{order:2}
+  .sidebar>.lines-section{order:3;background:#fff;padding:16px 18px}
+  .sidebar>.services-section{order:4;background:#fff;padding:16px 18px}
+  .sidebar>.live-section{order:5;background:#fff;padding:16px 18px}
+  .sidebar>.import-section{order:6;background:#fff;padding:16px 18px}
+  .sidebar>.sidebar-foot{order:7}
+  .line-cards{grid-template-columns:1fr 1fr}.train-card{min-width:0}.train-name{font-size:10px}.train-role{margin-left:3px}.train-speed{font-size:12px}
+}
+@media(max-width:370px){.line-cards{grid-template-columns:1fr}.train-cards{grid-template-columns:1fr}}
+.train-status{display:block}
+
+/* National infrastructure and live-observation view */
+.view[hidden]{display:none!important}
+.view-switch{display:flex;align-items:center;gap:3px;background:#f2f6f1;border:1px solid #e5ede5;border-radius:6px;padding:3px;margin-left:auto}
+.view-switch button{border:0;border-radius:4px;background:transparent;color:#82978a;font-size:10px;font-weight:800;padding:7px 10px;white-space:nowrap}
+.view-switch button span{font-weight:600;font-size:9px;opacity:.78;margin-left:3px}.view-switch button:hover{color:#205e50}.view-switch button.active{color:#215f51;background:white;box-shadow:0 1px 4px #21413219}
+.national-intro p{max-width:270px}.national-intro h1{font-size:27px}
+.national-layers .section-title,.national-live .section-title{margin-bottom:12px}
+.national-layer{display:grid;grid-template-columns:14px 18px minmax(0,1fr) auto;gap:8px;align-items:center;border-bottom:1px solid #f0f3ee;padding:8px 1px;cursor:pointer}
+.national-layer input,.national-train-option input{width:13px;height:13px;margin:0;accent-color:#287763}
+.national-layer b,.national-layer small{display:block}.national-layer b{font-size:10px;color:#49635a}.national-layer small{font-size:9px;margin-top:3px;color:#9aaba0}.national-layer strong{font-size:9px;font-variant-numeric:tabular-nums;color:#9aada0}
+.national-swatch{display:inline-block;flex:none;width:18px;height:4px;border-radius:5px;background:#71877f}.national-swatch.highspeed{background:#df644c;height:5px}.national-swatch.rail{background:#5b776e}.national-swatch.narrow{background:#287f86}.national-swatch.urban{background:#a47abd}.national-swatch.service{background:#c2cbc3}
+.national-hint,.national-disclaimer{font-size:9px;line-height:1.5;color:#8fa096;margin:10px 0 0}.national-disclaimer{color:#8b9c91}.national-disclaimer b{color:#5f796c}
+.national-feed-card{padding:9px 10px;margin-bottom:6px;border:1px solid #e5ede5;border-radius:5px;background:#f8faf7}.national-feed-title{display:flex;align-items:center;justify-content:space-between;gap:7px}.national-feed-title b{color:#4a655a;font-size:10px}.national-feed-title strong{font-size:15px;color:#326d5c;font-variant-numeric:tabular-nums}.national-feed-card small{display:block;margin-top:4px;color:#9aac9f;font-size:9px;line-height:1.35}.national-feed-card small.feed-status-warn{color:#aa7b4e}
+.national-train-option{display:flex;align-items:center;gap:8px;margin-top:10px;color:#627d70;font-size:10px;line-height:1.35;cursor:pointer}.national-train-option:has(input:disabled){color:#afbeb3;cursor:not-allowed}.national-live .live-footer{margin-top:12px}
+.region-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.region-actions button{border:1px solid #e0e9df;border-radius:5px;background:#fff;padding:9px 10px;font-size:10px;font-weight:750;color:#718a7b;white-space:nowrap}.region-actions button:hover,.region-actions button.active{border-color:#bfdaca;background:#e9f4eb;color:#317a61}
+.map-wrap #nationalMap{position:absolute;inset:0;background-color:#e7ece7;background-image:linear-gradient(#dce5dc70 1px,transparent 1px),linear-gradient(90deg,#dce5dc70 1px,transparent 1px);background-size:32px 32px}
+.national-map-card{min-width:175px}.national-map-card .map-card-main strong{font-size:18px}.national-legend{gap:11px}.national-legend>div{display:flex;gap:6px;align-items:center}.national-live-key{display:inline-grid;place-items:center;font-style:normal;font-size:8px;font-weight:850;width:14px;height:14px;border-radius:50%;background:#276ba9;border:2px solid #fff;box-shadow:0 0 0 1px #276ba9;color:white}.national-live-key.commuter{background:#4b9b89;box-shadow:0 0 0 1px #4b9b89}
+.national-marker{border:0;background:transparent}.national-marker-dot{display:grid;place-items:center;width:22px;height:22px;border:3px solid #fff;border-radius:50%;background:#286faa;color:#fff;box-shadow:0 2px 5px #193e5966;font:800 9px/1 system-ui,sans-serif}.national-marker-dot.commuter{background:#4b9b89}
+.national-popup small,.national-popup strong{display:block}.national-popup small{font-size:9px;font-weight:800;letter-spacing:.045em;color:#698b7c}.national-popup strong{margin-top:5px;font-size:13px;color:#243e36}.national-popup p{margin:5px 0 0;font-size:10px;line-height:1.4;color:#70887b}
+.national-bottom{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:1px 2px;color:#9bac9f;font-size:9px;font-weight:700;letter-spacing:.02em}.national-bottom a{color:#799688;text-decoration:none}.national-bottom a:hover{text-decoration:underline}
+@media(max-width:1000px){.view-switch button span{display:none}.national-map-header{align-items:flex-start;flex-direction:column;gap:10px}.region-actions{justify-content:flex-start}}
+@media(max-width:650px){
+  .topbar{gap:7px}.view-switch{margin-left:auto}.view-switch button{padding:7px 9px}.topbar-right{display:none}
+  .national-view .national-sidebar{display:contents}
+  .national-sidebar>.national-intro{order:0;background:#fff;padding:20px 18px 16px}
+  .national-view>.national-map-panel{order:1}
+  .national-sidebar>.national-layers{order:2;background:#fff;padding:16px 18px}
+  .national-sidebar>.national-live{order:3;background:#fff;padding:16px 18px}
+  .national-sidebar>.sidebar-foot{order:4;background:#fff;margin:0;padding:15px 18px}
+  .national-map-header{flex-direction:column;align-items:flex-start;gap:10px}.region-actions button{padding:7px 9px;font-size:9px}
+  .national-map-wrap{height:57vh;min-height:365px}
+  .national-map-card{top:10px;left:10px;width:128px;min-width:0;padding:8px 9px}
+  .national-map-card .map-card-label{gap:3px;letter-spacing:.06em}
+  .national-map-card .map-card-main{gap:3px}
+  .national-map-card .map-card-main strong{font-size:16px}
+  .national-map-card .map-card-main span{font-size:8px}
+  .national-map-card .base-status{white-space:normal;flex-wrap:wrap;gap:3px}
+  .national-notice{top:10px;right:48px;left:auto;transform:none;max-width:calc(100% - 190px);padding:7px 8px}
+  .national-legend{max-width:calc(100% - 20px);gap:7px 10px}.national-legend>div{font-size:8px}
+  .national-bottom{line-height:1.4}
+}
+
+/* Infrastructure is mapped as static facts, not live signalling aspects. */
+.theme-toggle{display:flex;align-items:center;justify-content:center;gap:6px;flex:none;min-height:34px;padding:7px 9px;border:1px solid #dfe9df;border-radius:5px;background:#fff;color:#50766a;font-size:10px;font-weight:800}
+.theme-toggle:hover{background:#f2f8f3}.theme-toggle svg{width:16px;height:16px}.theme-sun{display:none}
+html[data-theme="light"] .theme-moon{display:none}html[data-theme="light"] .theme-sun{display:block}
+.infra-option{display:flex;align-items:center;gap:9px;padding:7px 1px;font-size:10px;font-weight:700;color:#526e61;cursor:pointer}
+.infra-option input{width:13px;height:13px;margin:0;accent-color:#287763}.infra-key{display:inline-block;flex:none;width:10px;height:10px;border-radius:3px;background:#ad8dff;border:1px solid #ffffff;box-shadow:0 0 0 1px #a28ad3}
+.infra-key.switch{background:#58b8ce;box-shadow:0 0 0 1px #55a0b1}.infra-key.crossing{background:#f1b567;box-shadow:0 0 0 1px #d19751}.infra-key.milestone{background:#93a9a1;box-shadow:0 0 0 1px #839b91}
+.infra-status,.infra-warning{font-size:9px;line-height:1.5;margin:10px 0 0;color:#789183}.infra-warning{color:#9b8370}.national-infra .section-title,.infra-section .section-title{margin-bottom:10px}
+.infra-popup{max-height:min(48vh,430px);overflow:auto;overflow-wrap:anywhere;padding-right:3px}.infra-popup .infra-popup-row{margin:5px 0;font-size:10px;line-height:1.4}.infra-popup-row b{font-weight:750;color:#385a4d}.infra-raw-tags{margin-top:8px;border-top:1px solid #dfe8df;padding-top:7px}.infra-raw-tags summary{cursor:pointer;font-size:10px;font-weight:800;color:#3c806d}.infra-popup .infra-caution{margin-top:9px;border-top:1px solid #e4e8df;padding-top:7px;color:#9e6c47}.infra-osm-link{display:inline-block;margin-top:8px;font-size:10px;font-weight:750;color:#327860!important}
+@media(max-width:650px){
+  .theme-toggle{width:34px;padding:6px}.theme-toggle span{display:none}
+  .sidebar>.infra-section{order:7;background:#fff;padding:16px 18px}
+  .sidebar>.sidebar-foot{order:8}
+  .national-sidebar>.national-infra{order:3;background:#fff;padding:16px 18px}
+  .national-sidebar>.national-live{order:4}.national-sidebar>.sidebar-foot{order:5}
+}
+
+/* A complete dark theme, including the offline map and Leaflet controls. */
+html[data-theme="dark"]{color-scheme:dark;color:#d9e8df;background:#0d1715;--ink:#e1eee7;--muted:#9aafa5;--green:#7fc8a6;--line:#2b3e37;--orange:#f5a56e}
+html[data-theme="dark"] .topbar,html[data-theme="dark"] .sidebar,html[data-theme="dark"] .sidebar>.side-intro,html[data-theme="dark"] .sidebar>.panel-section,html[data-theme="dark"] .sidebar>.sidebar-foot{background:#14211e;color:#c9dcd2;border-color:#2b3e37}
+html[data-theme="dark"] .map-panel{background:#0d1715}
+html[data-theme="dark"] .brand-name,html[data-theme="dark"] .side-intro h1,html[data-theme="dark"] .map-heading h2,html[data-theme="dark"] .clock-row strong{color:#ecf5ef}
+html[data-theme="dark"] .brand-mark{background:#6cba98;color:#10251d}html[data-theme="dark"] .brand-divider,html[data-theme="dark"] .mini-line{background:#385046}
+html[data-theme="dark"] .brand-caption,html[data-theme="dark"] .version,html[data-theme="dark"] .index-tag,html[data-theme="dark"] .map-overline,html[data-theme="dark"] .field-label{color:#8ea99b}
+html[data-theme="dark"] .side-intro p,html[data-theme="dark"] .sidebar-foot,html[data-theme="dark"] .national-hint,html[data-theme="dark"] .national-disclaimer,html[data-theme="dark"] .infra-status{color:#a4b8ad}
+html[data-theme="dark"] .section-title h2,html[data-theme="dark"] .dock-title,html[data-theme="dark"] .national-layer b,html[data-theme="dark"] .national-feed-title b,html[data-theme="dark"] .infra-option,html[data-theme="dark"] .national-train-option,html[data-theme="dark"] .feed-row span{color:#c4d8ce}
+html[data-theme="dark"] .national-layer,html[data-theme="dark"] .panel-section,html[data-theme="dark"] .feed-row,html[data-theme="dark"] .plan-row,html[data-theme="dark"] .plan-details{border-color:#2b3e37}
+html[data-theme="dark"] .national-layer small,html[data-theme="dark"] .national-layer strong,html[data-theme="dark"] .national-feed-card small,html[data-theme="dark"] .lines-hint,html[data-theme="dark"] .line-sub,html[data-theme="dark"] .train-status{color:#91a99c}
+html[data-theme="dark"] .demo-badge,html[data-theme="dark"] .view-switch,html[data-theme="dark"] .segmented,html[data-theme="dark"] .count-pill,html[data-theme="dark"] .state-pill,html[data-theme="dark"] .virtual-badge{background:#20332c;color:#a5c4b4;border-color:#304a3d}
+html[data-theme="dark"] .view-switch button{color:#9ab1a5}html[data-theme="dark"] .view-switch button.active,html[data-theme="dark"] .segmented button.active{background:#385749;color:#e9f8ef}
+html[data-theme="dark"] .theme-toggle,html[data-theme="dark"] .icon-button,html[data-theme="dark"] .map-button,html[data-theme="dark"] .region-actions button,html[data-theme="dark"] .dispatch-control select,html[data-theme="dark"] .plan-row input,html[data-theme="dark"] .file-label{background:#1d3028;border-color:#385245;color:#d0e5d8}
+html[data-theme="dark"] .theme-toggle:hover,html[data-theme="dark"] .icon-button:hover,html[data-theme="dark"] .map-button:hover,html[data-theme="dark"] .region-actions button:hover,html[data-theme="dark"] .region-actions button.active{background:#315545;color:#e4f6e9;border-color:#4c7c62}
+html[data-theme="dark"] .primary-button{background:#82cda8;border-color:#82cda8;color:#10291e}html[data-theme="dark"] .primary-button:hover{background:#a4dec0}
+html[data-theme="dark"] .map-button.accent,html[data-theme="dark"] .plan-apply{background:#284d3b;border-color:#477a5d;color:#c5ebd4}
+html[data-theme="dark"] .cycle-info,html[data-theme="dark"] .live-total,html[data-theme="dark"] .national-feed-card,html[data-theme="dark"] .line-card,html[data-theme="dark"] .train-card,html[data-theme="dark"] .block-dock,html[data-theme="dark"] .block-chip{background:#1a2b24;border-color:#30473a;color:#d0e1d6}
+html[data-theme="dark"] .line-card:hover,html[data-theme="dark"] .train-card:hover,html[data-theme="dark"] .train-card.selected{background:#284436;border-color:#5b9070}
+html[data-theme="dark"] .line-name,html[data-theme="dark"] .train-name,html[data-theme="dark"] .train-speed,html[data-theme="dark"] .cycle-info b,html[data-theme="dark"] .live-total-copy b{color:#d8e8dd}
+html[data-theme="dark"] .train-icon{background:color-mix(in srgb,var(--train-color,#62be92) 28%,#14251d);color:#d9f5e3}
+html[data-theme="dark"] .incident-button,html[data-theme="dark"] .delay-button{background:#2b3024;border-color:#4a4936;color:#e7c69a}
+html[data-theme="dark"] .incident-button.active,html[data-theme="dark"] .incident-button:hover{background:#60402a;color:#ffe2bf}
+html[data-theme="dark"] .live-badge.fresh,html[data-theme="dark"] .state-pill.running{background:#285342;color:#b9edce}
+html[data-theme="dark"] .live-badge.partial,html[data-theme="dark"] .live-badge.offline{background:#4f3d26;color:#ffd39b}
+html[data-theme="dark"] .national-feed-title strong,html[data-theme="dark"] .live-total strong,html[data-theme="dark"] .feed-row strong{color:#9de3bd}
+html[data-theme="dark"] .national-feed-card small.feed-status-warn,html[data-theme="dark"] .feed-row small.feed-status-warn,html[data-theme="dark"] .infra-warning{color:#edbc8b}
+html[data-theme="dark"] .map-wrap{border-color:#30463b;background:#15241d}
+html[data-theme="dark"] .map-wrap #map,html[data-theme="dark"] .map-wrap #nationalMap{background-color:#172a23;background-image:linear-gradient(#2b453760 1px,transparent 1px),linear-gradient(90deg,#2b453760 1px,transparent 1px)}
+html[data-theme="dark"] .map-notice,html[data-theme="dark"] .map-card,html[data-theme="dark"] .map-legend{background:#192c25ef;border-color:#385247;color:#c2d8cb;box-shadow:0 4px 18px #0005}
+html[data-theme="dark"] .map-legend div,html[data-theme="dark"] .map-legend label,html[data-theme="dark"] .map-card-label,html[data-theme="dark"] .map-card-sub,html[data-theme="dark"] .base-status{color:#b3c9bc}
+html[data-theme="dark"] .map-card-main strong{color:#f0f8f2}html[data-theme="dark"] .base-status{border-color:#385247}
+html[data-theme="dark"] .national-swatch.rail{background:#9cc8b4}html[data-theme="dark"] .national-swatch.narrow{background:#65ccd5}html[data-theme="dark"] .national-swatch.urban{background:#c6a1e5}html[data-theme="dark"] .national-swatch.service{background:#7f9a8c}html[data-theme="dark"] .national-swatch.highspeed{background:#ff9676}
+html[data-theme="dark"] .leaflet-control-zoom a{background:#1d3028!important;border-color:#3b5347!important;color:#d5e9dd!important}
+html[data-theme="dark"] .leaflet-control-attribution{background:#172820e8!important;color:#a8beb0!important}html[data-theme="dark"] .leaflet-control-attribution a{color:#a6dcb9!important}
+html[data-theme="dark"] .leaflet-popup-content-wrapper,html[data-theme="dark"] .leaflet-popup-tip,html[data-theme="dark"] .leaflet-tooltip{background:#1c3027;color:#d7e9de;border-color:#496354;box-shadow:0 3px 18px #0007}
+html[data-theme="dark"] .leaflet-tooltip-top:before{border-top-color:#1c3027}html[data-theme="dark"] .leaflet-tooltip-bottom:before{border-bottom-color:#1c3027}
+html[data-theme="dark"] .national-popup strong,html[data-theme="dark"] .live-popup strong,html[data-theme="dark"] .infra-popup-row b{color:#e6f2e9}
+html[data-theme="dark"] .national-popup small,html[data-theme="dark"] .national-popup p,html[data-theme="dark"] .live-popup p{color:#b1c9ba}
+html[data-theme="dark"] .infra-popup .infra-caution{color:#f0c492;border-color:#3c5045}html[data-theme="dark"] .infra-raw-tags{border-color:#3c5045}html[data-theme="dark"] .infra-raw-tags summary,html[data-theme="dark"] .infra-osm-link{color:#98ddb7!important}
+html[data-theme="dark"] .block-chip.reserved{background:#264d39;border-color:#4f8968}html[data-theme="dark"] .block-chip.occupied{background:#563b26;border-color:#99653d}
+html[data-theme="dark"] .block-id,html[data-theme="dark"] .block-owner,html[data-theme="dark"] .dock-heading p,html[data-theme="dark"] .dock-footer{color:#acc0b3}
+html[data-theme="dark"] .train-pin-label{background:#e4f2e9;color:#1a4532}html[data-theme="dark"] .plan-details summary,html[data-theme="dark"] .import-details summary,html[data-theme="dark"] .live-footer button,html[data-theme="dark"] .live-sources a,html[data-theme="dark"] .text-button{color:#a2dec0}
+.infra-example{margin-top:10px;padding:7px 9px;border:1px solid #bdd7c7;border-radius:4px;background:#edf7ef;color:#397761;font-size:10px;font-weight:800}
+.infra-example:hover:not(:disabled){background:#dfeee2}.infra-example:disabled{opacity:.5;cursor:wait}
+html[data-theme="dark"] .infra-example{background:#284d3b;border-color:#477a5d;color:#c5ebd4}
+html[data-theme="dark"] .infra-example:hover:not(:disabled){background:#38644a}
+
+/* ADIF temporary speed restrictions: independent of OSM signals and SIM. */
+.national-limitations .section-title{margin-bottom:11px;align-items:flex-start;gap:8px}
+.national-limitations .section-title h2{line-height:1.35}
+.ltv-card{padding:10px;border:1px solid #ead8bc;background:#fff9f0;border-radius:6px}
+.ltv-card-head{display:flex;gap:9px;align-items:center}
+.ltv-card-head>div{min-width:0;flex:1}
+.ltv-card-head b,.ltv-card-head small{display:block;line-height:1.3}
+.ltv-card-head b{font-size:10px;color:#755732}.ltv-card-head small{font-size:9px;color:#a18a6f;margin-top:3px}
+.ltv-card-head strong{font-size:19px;color:#a2622c;font-variant-numeric:tabular-nums}
+.ltv-date{font-size:9px;color:#816b55;line-height:1.5;margin-top:4px}
+.ltv-date:first-of-type{margin-top:9px}
+.ltv-key{display:inline-grid;place-items:center;flex:none;width:16px;height:16px;border:2px dashed #a6662b;border-radius:50%;background:#f8d3a1;color:#724018;font-size:8px;font-weight:900;font-style:normal}
+.ltv-option{margin-top:12px}.ltv-option input{accent-color:#b46b27}
+.ltv-warning{font-size:9px;line-height:1.5;color:#916947;margin:10px 0 0}.ltv-warning b{color:#8e522b}
+.ltv-details{margin-top:10px;font-size:9px;color:#728b7e}.ltv-details summary{font-size:10px;font-weight:800;cursor:pointer;color:#5a7d6b}
+.ltv-list{display:flex;flex-direction:column;max-height:220px;overflow:auto;margin-top:6px;border:1px solid #e2e9df;border-radius:4px}
+.ltv-list-button{text-align:left;border:0;border-bottom:1px solid #e6ece4;background:#fff;padding:7px 8px;color:#526f60;font-size:10px;line-height:1.35}
+.ltv-list-button:last-child{border-bottom:0}.ltv-list-button:hover,.ltv-list-button:focus-visible{background:#f8f1e7;color:#84532a}
+.ltv-unlocated{padding-left:17px;margin:7px 0;line-height:1.5}.ltv-unlocated li{margin-bottom:5px}
+.ltv-footer{margin-top:12px}.ltv-sources{line-height:1.5}.ltv-incidents-link{display:inline-block;margin-top:8px;color:#397966;font-size:10px;font-weight:800;text-decoration:underline;text-underline-offset:2px}
+.ltv-map-status{position:absolute;z-index:500;right:14px;bottom:65px;max-width:calc(100% - 28px);padding:7px 9px;border:1px solid #dfbd8d;border-radius:5px;background:#fff4e5f5;color:#79512f;font-size:9px;font-weight:850;letter-spacing:.02em;box-shadow:0 3px 14px #33231322;pointer-events:none}
+.ltv-marker{border:0;background:transparent}
+.ltv-pin{display:grid;place-items:center;position:relative;box-sizing:border-box;width:28px;height:28px;border:2px dashed #8d4d1a;border-radius:50%;background:#ffdda8;color:#602d0e;box-shadow:0 1px 5px #23140799;font:900 10px/1 system-ui,sans-serif}
+.ltv-pin:after{content:'L';position:absolute;right:-4px;top:-4px;display:grid;place-items:center;width:11px;height:11px;border-radius:50%;background:#874916;color:#fff;font:900 7px/1 system-ui,sans-serif}
+.ltv-popup{min-width:210px;max-width:280px}.ltv-popup .infra-caution{margin-top:9px}
+html[data-theme="dark"] .ltv-card{background:#332d21;border-color:#695239}
+html[data-theme="dark"] .ltv-card-head b{color:#f2d0a6}html[data-theme="dark"] .ltv-card-head small,html[data-theme="dark"] .ltv-date{color:#cbb398}
+html[data-theme="dark"] .ltv-card-head strong{color:#ffd198}html[data-theme="dark"] .ltv-warning,html[data-theme="dark"] .ltv-warning b{color:#f2c08d}
+html[data-theme="dark"] .ltv-details,html[data-theme="dark"] .ltv-details summary,html[data-theme="dark"] .ltv-incidents-link{color:#b9d9c5}
+html[data-theme="dark"] .ltv-list{border-color:#405749}html[data-theme="dark"] .ltv-list-button{background:#1a2c24;border-color:#344a3d;color:#c5dccd}
+html[data-theme="dark"] .ltv-list-button:hover,html[data-theme="dark"] .ltv-list-button:focus-visible{background:#493828;color:#ffe4b9}
+html[data-theme="dark"] .ltv-map-status{background:#3a2e20f5;border-color:#806040;color:#ffe0b7}
+@media(max-width:650px){
+  .national-sidebar>.national-limitations{order:2;background:#fff;padding:16px 18px}
+  .national-sidebar>.national-layers{order:3}.national-sidebar>.national-infra{order:4}
+  .national-sidebar>.national-live{order:5}.national-sidebar>.sidebar-foot{order:6}
+  .ltv-map-status{right:10px;bottom:76px;font-size:8px;padding:6px 7px}
+}
+
+/* A cancellation is pinned at the scheduled station, not at an incident. */
+.national-cancellations .section-title{margin-bottom:11px;align-items:flex-start;gap:8px}
+.national-cancellations .section-title h2{line-height:1.35}
+.cancel-card{padding:10px;border:1px solid #eccdca;background:#fff8f7;border-radius:6px}
+.cancel-card .ltv-card-head b{color:#823f3d}.cancel-card .ltv-card-head small,.cancel-card .ltv-date{color:#96706c}.cancel-card .ltv-card-head strong{color:#b6453e}
+.cancel-key{display:inline-grid;place-items:center;flex:none;width:16px;height:16px;border:1px solid #982b2b;border-radius:3px;background:#b83f37;color:white;font:900 14px/1 system-ui,sans-serif;font-style:normal}
+.cancel-option{margin-top:12px}.cancel-option input{accent-color:#b83f37}
+.cancel-warning{font-size:9px;line-height:1.5;color:#96615b;margin:10px 0 0}.cancel-warning b{color:#9a3b34}
+.cancel-marker{border:0;background:transparent}.cancel-pin{display:grid;place-items:center;box-sizing:border-box;width:28px;height:28px;border:2px solid #fff;border-radius:6px;background:#b83f37;color:white;box-shadow:0 1px 5px #23140799;font:900 23px/1 system-ui,sans-serif}
+.cancel-popup{min-width:210px;max-width:280px}.cancel-list-empty{margin:0;padding:8px;color:#806a63;font-size:10px;line-height:1.4}
+html[data-theme="dark"] .cancel-card{background:#372725;border-color:#70403c}
+html[data-theme="dark"] .cancel-card .ltv-card-head b,html[data-theme="dark"] .cancel-card .ltv-card-head strong{color:#ffc2b9}
+html[data-theme="dark"] .cancel-card .ltv-card-head small,html[data-theme="dark"] .cancel-card .ltv-date,html[data-theme="dark"] .cancel-warning,html[data-theme="dark"] .cancel-warning b,html[data-theme="dark"] .cancel-list-empty{color:#edb9b0}
+@media(max-width:650px){
+  .national-sidebar>.national-cancellations{order:2;background:#fff;padding:16px 18px}
+  .national-sidebar>.national-limitations{order:3}.national-sidebar>.national-layers{order:4}
+  .national-sidebar>.national-infra{order:5}.national-sidebar>.national-live{order:6}.national-sidebar>.sidebar-foot{order:7}
+}
+
+/* Observed GPS trains: the animated intermediate position is only an estimate. */
+.motion-option{margin-top:9px}.motion-option input{accent-color:#6671be}
+.motion-disclaimer{font-size:9px;line-height:1.45;margin:8px 0;color:#657b86}
+.live-motion-caution{margin-top:8px!important;padding-top:7px;border-top:1px solid #e1e8e4;color:#795f4e!important;font-size:10px!important;line-height:1.4!important}
+.national-marker-dot.live-observed-pin,.real-train-pin.live-observed-pin{position:relative;box-sizing:border-box;width:32px;height:32px;border:2px solid #fff;border-radius:8px;display:flex;align-items:flex-start;justify-content:center;padding-top:3px;background:#286faa;color:#fff;box-shadow:0 2px 6px #162c3888}
+.national-marker-dot.live-observed-pin.commuter,.real-train-pin.live-observed-pin.commuter{background:#278978}
+.national-marker-dot.live-observed-pin.express,.real-train-pin.live-observed-pin.express{background:#6254b4}
+.live-observed-pin b{position:absolute;bottom:1px;font:900 8px/1 system-ui,sans-serif;letter-spacing:.01em;color:white}
+.is-interpolating .live-observed-pin{outline:2px dashed #f7c66d;outline-offset:2px}
+.national-live-key.express{background:#6254b4;font-size:7px}
+html[data-theme="dark"] .motion-disclaimer{color:#b8cdd3}
+html[data-theme="dark"] .live-popup .live-motion-caution,html[data-theme="dark"] .national-popup .live-motion-caution{color:#efd0b1!important;border-color:#456054}

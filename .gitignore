@@ -1,0 +1,33 @@
+# Dependencias y entornos locales
+node_modules/
+.venv/
+venv/
+
+# Cachés de Python y herramientas
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# Credenciales y configuración local
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Descargas voluminosas e instalaciones generadas
+*.osm.pbf
+build/
+dist/
+coverage/
+
+# Archivos del sistema/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
