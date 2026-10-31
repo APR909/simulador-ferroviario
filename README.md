@@ -1,6 +1,6 @@
 # Vía Lab · España y Sevilla
 
-Mapa ferroviario web y simulador didáctico. La vista **España** presenta vías de OpenStreetMap, posiciones recientes de Renfe cuando están disponibles y dos capas independientes: **cancelaciones identificables de viajes AV de Renfe** y **limitaciones temporales de velocidad (LTV) de Adif**. La vista **Sevilla** conserva, por separado, el escenario ficticio de cinco líneas, diez trenes y recursos virtuales compartidos.
+Mapa ferroviario web y simulador didáctico. La vista **España** presenta vías de OpenStreetMap, posiciones recientes de Renfe cuando están disponibles y dos capas independientes: **cancelaciones identificables de viajes AV de Renfe** y **limitaciones temporales de velocidad (LTV) de Adif**. La vista **Sevilla** conserva, por separado, el escenario ficticio de cinco líneas, diez trenes y recursos virtuales compartidos. **Itinerarios** permite explorar horarios programados de las últimas 24 horas; no reproduce posiciones históricas.
 
 > **Límite importante:** las LTV son una instantánea publicada, no un feed de averías o cortes en tiempo real. Las cancelaciones son avisos de viajes de Renfe, no causas ni ubicaciones de cortes. Ninguna capa es un diagnóstico completo de la red; consulta el [estado de la red de Adif](https://www.adif.es/viajeros/estado-de-la-red) para los avisos de tráfico.
 
@@ -13,6 +13,28 @@ Mapa ferroviario web y simulador didáctico. La vista **España** presenta vías
 En GitHub Pages la aplicación es estática y no puede ejecutar `servidor.py`. Cuando falta `/api/trenes`, el navegador consulta directamente la API pública con CORS de [RadarDeTrenes](https://radardetrenes.com/docs) para posiciones AV/LD/MD y Cercanías. Se actualiza como máximo cada 30 segundos por pestaña, requiere conexión y depende de la disponibilidad del intermediario. La cobertura es parcial; el reloj del dispositivo debe estar bien ajustado para que se validen correctamente las fechas. Los puntos de Cercanías consultados de esta forma no se animan si su hora GPS individual no puede verificarse.
 
 **Esta alternativa solo cubre posiciones:** en GitHub Pages las cancelaciones necesitan el servidor Python y se indican como **SIN SERVIDOR**; las LTV solo muestran la **INSTANTÁNEA** incluida, no una consulta actual. No se presenta ninguna de ellas como disponible en tiempo real.
+
+### Itinerarios y línea de tiempo de 24 horas
+
+1. Abre **Itinerarios · 24 horas** en la barra superior. Arrastra la línea de tiempo o usa los botones −24 h, −12 h y −6 h para elegir un instante de las últimas 24 horas; **Ahora** vuelve al final de la ventana.
+2. La lista muestra viajes cuyo **horario programado** abarca el instante elegido. Filtra por número, línea, estación o tipo de servicio; toca un viaje para consultar su secuencia de paradas y horas de llegada y salida. Pulsa una parada para centrar el mapa.
+3. **Consultar horas disponibles** busca en un máximo de 12 tablones actuales de Renfe / ADIF a través de RadarDeTrenes, con hasta tres peticiones simultáneas y caché de 30 s por estación. Solo se utiliza una fila que coincide en número, estación, origen, destino y hora programada; si la fuente la identifica como `ESTIMATED` o `REAL`, se muestra **estimada** o **real**, calculada como hora programada más la demora publicada. Si no existe una coincidencia fiable o falla la consulta se mantiene **programada**. Los tablones actuales no garantizan conservar las horas reales ni las estimaciones de hace 24 horas.
+
+**No hay histórico GPS:** la vista no guarda posiciones y la línea discontinua une estaciones en línea recta; no representa una vía ni un trayecto efectivamente recorrido. El horario no prueba que el tren circulase. Metro, tranvía y otros operadores no están en estos GTFS de Renfe. Para planificar viajes consulta al operador.
+
+Los calendarios son una **instantánea estática** de [Renfe AV/LD/MD](https://data.renfe.com/dataset/horarios-de-alta-velocidad-larga-distancia-y-media-distancia) y [Cercanías](https://data.renfe.com/dataset/horarios-cercanias), CC BY 4.0. El archivo inicial incluido en el repositorio se generó el **31-10-2026** (hora de Madrid), con días de servicio AV/LD/MD del **29-10 al 30-11-2026** y Cercanías del **30-10 al 28-11-2026**. GitHub Pages intenta publicar una instantánea renovada cada día mediante GitHub Actions; la fecha y cobertura visibles en la aplicación corresponden al despliegue efectivamente publicado. Los horarios pueden cambiar y algunas circulaciones se omiten por validaciones conservadoras. La aplicación avisa cuando el instante queda fuera de cobertura: no interpreta la falta de horarios como ausencia de trenes.
+
+El flujo descarga los dos GTFS, recupera la instantánea de horarios previamente publicada y conserva días de servicio pasados solo si desaparecieron por completo del nuevo GTFS. Se etiquetan como **instantánea previa** y pueden omitir cambios; no se guarda ningún histórico GPS. Si la descarga, la validación o las pruebas fallan, el flujo no despliega datos nuevos y permanece visible la última versión válida. Las ejecuciones programadas pueden retrasarse o detenerse; revisa su estado en **Actions** y la fecha mostrada en la aplicación. El flujo publica un artefacto generado, **sin actualizar mediante commits los archivos base del repositorio**.
+
+Para renovar también la copia local o la que hay en el repositorio, ejecuta desde la carpeta del proyecto y vuelve a publicar los archivos modificados:
+
+```bash
+python3 scripts/generar_itinerarios_renfe.py --previous data/itinerarios-renfe.json  # conserva días previos si aún están disponibles
+python3 scripts/crear_html_autocontenido.py   # también renueva el HTML de un solo archivo
+npm test
+```
+
+El generador usa calendarios y excepciones GTFS, conserva tiempos superiores a 24 h y aplica la zona `Europe/Madrid` con la definición GTFS de medianoche de servicio («mediodía menos 12 horas»). Rechaza viajes con datos ambiguos en vez de corregirlos por aproximación. Consulta `python3 scripts/generar_itinerarios_renfe.py --help` para usar ZIP ya descargados o ajustar el periodo. El HTML autocontenido incluye los horarios para funcionar sin red; la consulta de tablones sí requiere conexión.
 
 ### Con consultas directas mediante el servidor Python
 
@@ -37,11 +59,11 @@ En GitHub Pages la aplicación es estática y no puede ejecutar `servidor.py`. C
 
 Si el puerto 8000 ya está ocupado, inspecciona qué proceso lo utiliza antes de detenerlo. En Linux/macOS puedes usar `lsof -i :8000` o `ss -ltnp`; en Windows, `netstat -ano | findstr :8000`. También puedes elegir otro puerto con `--port 8001`.
 
-**El servidor incluido amplía las fuentes disponibles.** Consulta las dos fuentes de posiciones GTFS-RT de Renfe y, como alternativa para AV/LD/MD si el GTFS directo falla, caduca o solo contiene posiciones descartadas, la API independiente de RadarDeTrenes. También consulta el feed fijo de cancelaciones de Renfe, el GTFS estático para etiquetas y horarios, y los servicios públicos de LTV y tramos de Adif. Ofrece API relativas al navegador. Un simple `python3 -m http.server` no proporciona esas API; en ese caso el navegador usa directamente RadarDeTrenes únicamente para posiciones. Consultar cada cinco minutos no hace que la fuente LTV sea de actualización inmediata.
+**El servidor incluido amplía las fuentes disponibles.** Consulta las dos fuentes de posiciones GTFS-RT de Renfe y, como alternativa para AV/LD/MD si el GTFS directo falla, caduca o solo contiene posiciones descartadas, la API independiente de RadarDeTrenes. También consulta el feed fijo de cancelaciones de Renfe, el GTFS estático para etiquetas y horarios, y los servicios públicos de LTV y tramos de Adif. Ofrece API relativas al navegador. Un simple `python3 -m http.server` no proporciona esas API; en ese caso el navegador consulta RadarDeTrenes directamente para posiciones y, a petición del usuario, para tablones de itinerarios. Consultar cada cinco minutos no hace que la fuente LTV sea de actualización inmediata.
 
 ### HTML autocontenido
 
-`simulador.html` incorpora código, estilos, ambas redes de vías, la infraestructura OSM y una **instantánea fechada** de LTV Adif. Puedes abrirlo directamente con doble clic: las redes, los datos estáticos y la simulación de Sevilla funcionan, y OpenFreeMap se carga si hay conexión y WebGL2. Desde un archivo (`file://`) o un alojamiento estático, el navegador puede consultar posiciones directamente a RadarDeTrenes si permite la conexión CORS; sin red mostrará `—`, no un cero ficticio. Las cancelaciones requieren el servidor Python y las LTV se muestran como **INSTANTÁNEA**, sin afirmar que continúen vigentes. Para disponer también de esas API, arranca `servidor.py` y visita <http://localhost:8000/simulador.html>.
+`simulador.html` incorpora código, estilos, ambas redes de vías, la infraestructura OSM y **instantáneas fechadas** de LTV Adif y de horarios GTFS de Renfe. Puedes abrirlo directamente con doble clic: las redes, los datos estáticos y la simulación de Sevilla funcionan, y OpenFreeMap se carga si hay conexión y WebGL2. Desde un archivo (`file://`) o un alojamiento estático, el navegador puede consultar posiciones directamente a RadarDeTrenes si permite la conexión CORS; sin red mostrará `—`, no un cero ficticio. Las cancelaciones requieren el servidor Python y las LTV se muestran como **INSTANTÁNEA**, sin afirmar que continúen vigentes. Para disponer también de esas API, arranca `servidor.py` y visita <http://localhost:8000/simulador.html>.
 
 En un visor aislado sin acceso a la red, las vías y la simulación continúan sobre una cuadrícula. Pulsa **Reintentar** cuando vuelva a estar disponible el fondo. En una CSP restrictiva hay que permitir conexiones HTTPS a `tiles.openfreemap.org` y los workers de MapLibre; el HTML autocontenido usa workers `blob:`.
 
@@ -223,6 +245,8 @@ src/realtime.js                    caducidad y agregación de observaciones
 src/live-source.js                 fuente RadarDeTrenes directa para alojamiento estático
 src/live-motion.js                 interpolación visual acotada de posiciones recibidas
 src/national.js                    mapa nacional, capas y filtros de observaciones
+src/timetable.js                   calendario GTFS, ventana y validación de tablones
+src/timetable-ui.js                línea de tiempo, paradas y mapa de itinerarios
 src/limitations.js                 capa y ficha LTV, validación y estado de frescura
 src/cancellations.js               capa Renfe de cancelaciones, consulta y fichas
 src/infrastructure.js              filtros, selección y fichas de elementos OSM
@@ -240,6 +264,8 @@ scripts/importar_infraestructura_osm.py  etiquetas de vías y nodos ferroviarios
 scripts/importar_sevilla_osm.py    extracción reproducible desde PBF regional
 scripts/descargar_osm.py           descarga opcional de zonas pequeñas por Overpass
 scripts/actualizar_limitaciones.py  actualiza la instantánea de Adif si es válida
+scripts/generar_itinerarios_renfe.py descarga y compacta calendarios/horarios GTFS
+data/itinerarios-renfe.json         instantánea estática de horarios GTFS de Renfe
 scripts/crear_html_autocontenido.py empaquetado del HTML
 tests/                             pruebas Node y Python con fixtures sintéticos
 vendor/                            Leaflet, MapLibre y licencias

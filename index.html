@@ -8,7 +8,7 @@
   <title>Vía Lab · Red ferroviaria de España y Sevilla</title>
   <link rel="stylesheet" href="vendor/leaflet.css">
   <link rel="stylesheet" href="vendor/maplibre-gl.css">
-  <link rel="stylesheet" href="styles.css?v=12">
+  <link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
   <header class="topbar">
@@ -20,13 +20,14 @@
     <nav class="view-switch" aria-label="Cambiar de mapa">
       <button type="button" id="showNational" aria-pressed="false">España <span>red nacional</span></button>
       <button type="button" id="showSevilla" class="active" aria-pressed="true">Sevilla <span>simulador</span></button>
+      <button type="button" id="showTimetable" aria-pressed="false">Itinerarios <span>24 horas</span></button>
     </nav>
     <button type="button" id="themeToggle" class="theme-toggle" aria-label="Activar o desactivar modo oscuro" aria-pressed="true" title="Cambiar al modo claro">
       <svg class="theme-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.2A7 7 0 0 1 7.8 3.5a7 7 0 1 0 8.7 8.7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
       <svg class="theme-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.2" stroke="currentColor" stroke-width="1.6"/><path d="M10 1.8v2M10 16.2v2M1.8 10h2m12.4 0h2M4.2 4.2l1.4 1.4m8.8 8.8 1.4 1.4m0-11.6-1.4 1.4m-8.8 8.8-1.4 1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       <span id="themeLabel">Oscuro</span>
     </button>
-    <div class="topbar-right"><span class="demo-badge"><span class="status-dot"></span> VÍAS REALES · SIMULACIÓN DIDÁCTICA</span><span class="version">v 0.9</span></div>
+    <div class="topbar-right"><span class="demo-badge"><span class="status-dot"></span> VÍAS REALES · SIMULACIÓN DIDÁCTICA</span><span class="version">v 0.10</span></div>
   </header>
 
   <div class="app-layout view" id="sevillaView">
@@ -260,7 +261,50 @@
     </main>
   </div>
 
+  <div class="app-layout view timetable-layout" id="timetableView" hidden>
+    <aside class="sidebar timetable-sidebar" aria-label="Línea de tiempo de horarios">
+      <div class="side-intro timetable-intro">
+        <div class="eyebrow"><span class="index-tag">03 / ITINERARIOS</span><span class="mini-line"></span></div>
+        <h1>Viajes en<br> el tiempo<span class="heading-dot">.</span></h1>
+        <p>Explora los itinerarios programados de las últimas 24 horas. <b>No son posiciones GPS históricas ni confirman que el tren circulase.</b></p>
+      </div>
+      <section class="panel-section timetable-controls" aria-labelledby="timetable-heading">
+        <div class="section-title"><h2 id="timetable-heading">LÍNEA DE TIEMPO</h2><span class="section-number">24 H</span></div>
+        <div class="timetable-time-row"><span class="field-label">INSTANTE SELECCIONADO · MADRID</span><output id="timetableTime" for="timetableRange">Cargando…</output></div>
+        <input id="timetableRange" class="timetable-range" type="range" min="0" max="1440" step="1" value="1440" aria-label="Instante de las últimas 24 horas" disabled>
+        <div class="timetable-range-labels"><span id="timetableStart">Hace 24 h</span><span id="timetableEnd">Ahora</span></div>
+        <div class="timetable-quick" role="group" aria-label="Saltar a un momento"><button type="button" data-timetable-offset="24">−24 h</button><button type="button" data-timetable-offset="12">−12 h</button><button type="button" data-timetable-offset="6">−6 h</button><button type="button" data-timetable-offset="0">Ahora</button></div>
+        <label class="field-label timetable-search-label" for="timetableSearch">BUSCAR TREN, LÍNEA O ESTACIÓN</label>
+        <input id="timetableSearch" class="timetable-search" type="search" autocomplete="off" placeholder="Ej. 13073, C1 o Sevilla" disabled>
+        <div class="timetable-filters"><label><input type="checkbox" id="timetableAV" checked> AV / LD / MD</label><label><input type="checkbox" id="timetableCommuter" checked> Cercanías</label></div>
+        <p id="timetableDatasetStatus" class="timetable-data-status" role="status">Cargando horarios GTFS de Renfe…</p>
+        <div class="timetable-results-heading"><span>SERVICIOS SEGÚN HORARIO</span><strong id="timetableCount">—</strong></div>
+        <p class="timetable-results-explainer">Selecciona un viaje para ver sus paradas y horas.</p>
+        <div id="timetableResults" class="timetable-results" aria-label="Viajes programados" aria-live="polite"></div>
+        <button type="button" id="timetableMore" class="timetable-more" hidden>Mostrar más viajes</button>
+      </section>
+      <div class="timetable-source">Horarios: <a href="https://data.renfe.com/dataset/horarios-de-alta-velocidad-larga-distancia-y-media-distancia" target="_blank" rel="noopener noreferrer">Renfe Datos Abiertos</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Tablones: Renfe / ADIF vía <a href="https://radardetrenes.com/docs" target="_blank" rel="noopener noreferrer">RadarDeTrenes</a>.</div>
+    </aside>
+    <main class="map-panel timetable-main">
+      <div class="map-header timetable-map-header">
+        <div><div class="map-overline"><span class="map-overline-dot"></span> ITINERARIO PROGRAMADO · NO ES GPS</div><div class="map-heading"><h2>Recorrido y paradas</h2></div></div>
+        <span class="timetable-map-label">Línea entre estaciones · no es el trazado real</span>
+      </div>
+      <div class="map-wrap timetable-map-wrap">
+        <div id="timetableMap" role="application" aria-label="Mapa de paradas programadas"></div>
+        <div class="timetable-map-notice" id="timetableMapNotice">Selecciona un viaje para ver sus estaciones.</div>
+        <div class="timetable-base base-status" aria-live="polite"><span id="timetableBaseStatus">Conectando mapa de fondo…</span><button type="button" id="timetableBaseRetry" hidden>Reintentar</button></div>
+      </div>
+      <section class="timetable-detail" aria-labelledby="timetableJourneyHeading">
+        <div class="timetable-detail-heading"><div><span class="field-label">DETALLE DEL ITINERARIO</span><h3 id="timetableJourneyHeading">Selecciona un viaje</h3><p id="timetableJourneyMeta">Se mostrarán las paradas y sus horas publicadas.</p></div><button type="button" id="timetableBoardRefresh" class="timetable-board-button" disabled>Consultar horas disponibles ↻</button></div>
+        <p class="timetable-detail-caution">Horas <b>programadas</b> por defecto. Si un tablón actual identifica la misma circulación, se muestran sus horas <b>estimadas</b> o <b>reales</b>. No se recuperan estimaciones o llegadas históricas que la fuente no publique.</p>
+        <p id="timetableBoardStatus" class="timetable-board-status" role="status">No hay un viaje seleccionado.</p>
+        <div class="timetable-table-wrap"><table class="timetable-table"><thead><tr><th scope="col">PARADA</th><th scope="col">LLEGADA</th><th scope="col">SALIDA</th></tr></thead><tbody id="timetableStops"><tr><td colspan="3">Selecciona un viaje en la lista.</td></tr></tbody></table></div>
+      </section>
+    </main>
+  </div>
+
   <script src="vendor/leaflet.js"></script>
-  <script type="module" src="src/app.js?v=12"></script>
+  <script type="module" src="src/app.js?v=13"></script>
 </body>
 </html>

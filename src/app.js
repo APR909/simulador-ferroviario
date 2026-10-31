@@ -6,6 +6,7 @@ import { LIVE_POLL_MS, summarizeLive, isExpressService } from './realtime.js?v=1
 import { fetchLivePositions } from './live-source.js?v=12';
 import { createLiveMotionLayer, createLiveTrainIcon, liveIconKind } from './live-motion.js?v=12';
 import { initializeNationalMap } from './national.js?v=12';
+import { initializeTimetableView } from './timetable-ui.js?v=13';
 import { initializeInfrastructure, infrastructureTrackPopup } from './infrastructure.js?v=12';
 import { initializeTheme } from './theme.js?v=12';
 
@@ -629,16 +630,16 @@ async function initializeBasemap(targetMap=map, status=$('baseStatusText'), retr
   }
 }
 $('baseRetry').addEventListener('click', () => initializeBasemap());
-let localBasemapStarted=false, nationalPromise=null, activeView='sevilla';
+let localBasemapStarted=false, nationalPromise=null, timetablePromise=null, activeView='sevilla';
 function ensureLocalBasemap() {
   if (!localBasemapStarted) { localBasemapStarted=true; initializeBasemap(); }
 }
 async function changeView(view,updateHash=true) {
-  if (!['sevilla','espana'].includes(view)) return;
+  if (!['sevilla','espana','itinerarios'].includes(view)) return;
   activeView=view;
-  if (view==='espana' && running) { setRunning(false); setNotice('Simulación de Sevilla pausada al cambiar de mapa.'); render(); }
-  $('sevillaView').hidden=view!=='sevilla'; $('nationalView').hidden=view!=='espana';
-  for (const [id,current] of [['showSevilla','sevilla'],['showNational','espana']]) {
+  if (view!=='sevilla' && running) { setRunning(false); setNotice('Simulación de Sevilla pausada al cambiar de mapa.'); render(); }
+  $('sevillaView').hidden=view!=='sevilla'; $('nationalView').hidden=view!=='espana'; $('timetableView').hidden=view!=='itinerarios';
+  for (const [id,current] of [['showSevilla','sevilla'],['showNational','espana'],['showTimetable','itinerarios']]) {
     $(id).classList.toggle('active',view===current); $(id).setAttribute('aria-pressed',String(view===current));
   }
   if (updateHash) { try { history.replaceState(null,'',`#${view}`); } catch (_) { /* file:// sandbox */ } }
@@ -646,7 +647,7 @@ async function changeView(view,updateHash=true) {
     ensureLocalBasemap();
     localMotion.resume();
     requestAnimationFrame(()=>map.invalidateSize({animate:false}));
-  } else {
+  } else if (view==='espana') {
     if (!nationalPromise) nationalPromise=initializeNationalMap(initializeBasemap);
     try {
       const controller=await nationalPromise;
@@ -656,8 +657,20 @@ async function changeView(view,updateHash=true) {
       console.error(error);
       nationalPromise=null;
     }
+  } else {
+    if (!timetablePromise) timetablePromise=initializeTimetableView(initializeBasemap);
+    try {
+      const controller=await timetablePromise;
+      if (activeView==='itinerarios') controller.show();
+    } catch (error) {
+      $('timetableDatasetStatus').textContent=`No se pudo iniciar la línea de tiempo: ${error.message}.`;
+      console.error(error);
+      timetablePromise=null;
+    }
   }
 }
 $('showSevilla').addEventListener('click',()=>changeView('sevilla'));
 $('showNational').addEventListener('click',()=>changeView('espana'));
-changeView(location.hash==='#sevilla' ? 'sevilla' : 'espana',false);
+$('showTimetable').addEventListener('click',()=>changeView('itinerarios'));
+const initialView=location.hash==='#sevilla' ? 'sevilla' : location.hash==='#itinerarios' ? 'itinerarios' : 'espana';
+changeView(initialView,false);

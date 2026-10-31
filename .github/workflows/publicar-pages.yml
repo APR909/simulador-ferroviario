@@ -1,0 +1,73 @@
+name: Publicar Vía Lab y actualizar horarios
+
+"on":
+  push:
+    branches: [main]
+  schedule:
+    # Tras la actualización diaria habitual de los GTFS de Renfe. GitHub puede retrasar el inicio.
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Obtener proyecto
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Obtener la dirección de GitHub Pages
+        id: pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
+      - name: Recuperar horarios previamente publicados
+        env:
+          BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          set -eu
+          previous="$RUNNER_TEMP/vialab-horarios-previos.json"
+          # La primera vez no existe este archivo en Pages. La instantánea del
+          # repositorio sirve de respaldo. Nunca se guardan posiciones GPS.
+          if [[ "$BASE_URL" == https://* ]] && curl --fail --silent --show-error --location --proto '=https' --connect-timeout 10 --max-time 45 --max-filesize 10000000 "${BASE_URL%/}/data/itinerarios-renfe.json" -o "$previous"; then
+            echo 'Instantánea previa recuperada de Pages.'
+          else
+            echo 'Se usará la instantánea inicial del repositorio.'
+            cp data/itinerarios-renfe.json "$previous"
+          fi
+      - name: Actualizar horarios y generar el HTML
+        run: |
+          set -eu
+          python3 scripts/generar_itinerarios_renfe.py --previous "$RUNNER_TEMP/vialab-horarios-previos.json"
+          python3 scripts/crear_html_autocontenido.py
+      - name: Ejecutar pruebas
+        run: npm test
+      - name: Preparar los archivos públicos
+        run: |
+          set -eu
+          mkdir -p public
+          cp index.html styles.css simulador.html public/
+          cp -R src data vendor public/
+      - name: Subir artefacto estático
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        with:
+          path: public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5
