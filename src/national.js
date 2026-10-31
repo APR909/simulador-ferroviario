@@ -183,7 +183,7 @@ export async function initializeNationalMap(setupBasemap) {
     for (const key of NATIONAL_ORDER) if (layers[key]) layers[key].setStyle(nationalCurrentStyle(key));
   });
   let dataset=null, featureIndex=null, livePayload=null, liveReceivedAt=0, liveBusy=false, lastLiveKey='';
-  let lastRequestAt=0;
+  let lastRequestAt=0,liveTimer=null;
   const isVisible=key=>Boolean(nationalEl(`nationalLayer-${key}`)?.checked);
   const setRegion=key=>{
     const region=NATIONAL_REGIONS[key]; if (!region) return;
@@ -278,6 +278,14 @@ export async function initializeNationalMap(setupBasemap) {
       lastLiveKey=key;
     }
   }
+  function scheduleLiveRefresh() {
+    clearTimeout(liveTimer);liveTimer=null;
+    if (!document.hidden && !nationalEl('nationalView').hidden) {
+      liveTimer=setTimeout(()=>{
+        if (!document.hidden && !nationalEl('nationalView').hidden) refreshLive();
+      },LIVE_POLL_MS);
+    }
+  }
   async function refreshLive() {
     if (liveBusy) return;
     liveBusy=true; lastRequestAt=performance.now(); nationalEl('nationalLiveRefresh').disabled=true;
@@ -287,13 +295,18 @@ export async function initializeNationalMap(setupBasemap) {
       // Count the full request duration conservatively as part of the age.
       livePayload=payload; liveReceivedAt=lastRequestAt; renderLive();
     } catch (_) { liveUnavailable('No se pudo consultar la API local ni RadarDeTrenes; revisa la conexión.'); }
-    finally { clearTimeout(timeout);liveBusy=false;nationalEl('nationalLiveRefresh').disabled=false; }
+    finally { clearTimeout(timeout);liveBusy=false;nationalEl('nationalLiveRefresh').disabled=false;scheduleLiveRefresh(); }
   }
   nationalEl('nationalLiveRefresh').addEventListener('click',refreshLive);
   for (const id of ['nationalLongDistance','nationalCommuter','nationalExpressOnly']) nationalEl(id).addEventListener('change',renderLive);
-  setInterval(()=>{if (!document.hidden && !nationalEl('nationalView').hidden) refreshLive();},LIVE_POLL_MS);
+  // Schedule from the end of the previous fetch, not a fixed interval started
+  // before it. Otherwise a poll can repeatedly land just before the shared
+  // 30-second cache expires and postpone new observations by another cycle.
   setInterval(()=>{if (!document.hidden && !nationalEl('nationalView').hidden) renderLive();},5000);
-  document.addEventListener('visibilitychange',()=>{if (!document.hidden && !nationalEl('nationalView').hidden) {renderLive();nationalMotion.resume();refreshLive();}});
+  document.addEventListener('visibilitychange',()=>{
+    if (document.hidden) {clearTimeout(liveTimer);liveTimer=null;}
+    else if (!nationalEl('nationalView').hidden) {renderLive();nationalMotion.resume();refreshLive();}
+  });
 
   try {
     const response=window.RAIL_SPAIN_SAMPLE ? null : await fetch('./data/espana-osm.json');
@@ -320,12 +333,13 @@ export async function initializeNationalMap(setupBasemap) {
     nationalEl('nationalNotice').parentElement.classList.add('error');
     console.error(error);
   }
-  refreshLive();
+  if (!document.hidden && !nationalEl('nationalView').hidden) refreshLive();
   return {
     show() {
       requestAnimationFrame(()=>{map.invalidateSize({animate:false});renderStations();});
       limitations.show();cancellations.show();nationalMotion.resume();
-      if (!livePayload || performance.now()-lastRequestAt>=LIVE_POLL_MS) refreshLive(); else renderLive();
+      if (!livePayload || performance.now()-lastRequestAt>=LIVE_POLL_MS) refreshLive();
+      else {renderLive();scheduleLiveRefresh();}
     },
     map,
   };

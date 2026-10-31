@@ -78,6 +78,7 @@ try {
   });
   await local.goto(baseUrl+'/#sevilla',{waitUntil:'domcontentloaded'});await local.waitForFunction(()=>document.querySelector('#liveTotal')?.textContent==='2');
   assert.equal(await local.locator('.real-train-marker').count(),2);assert.equal(await local.locator('.real-train-pin.express').count(),1);
+  await local.waitForFunction(()=>document.querySelectorAll('.train-card').length===10,null,{timeout:45000});
   assert.equal(await local.locator('.train-card').count(),10);
   await local.locator('#liveRefresh').click();await local.waitForFunction(()=>document.querySelector('.real-train-marker.is-interpolating'));
   await local.waitForTimeout(1000);const between=await getLat(local,'map','SEVILLA-AV');assert.ok(between>37.39&&between<37.40);
@@ -97,7 +98,9 @@ try {
   await standalone.goto(pathToFileURL(resolve('simulador.html')).href,{waitUntil:'domcontentloaded'});await nationalReady(standalone);
   await standalone.waitForFunction(()=>document.querySelector('#nationalLiveBadge')?.textContent==='SIN DATOS');
   assert.equal(await standalone.locator('.national-marker').count(),0);assert.equal(await standalone.locator('#ltvBadge').innerText(),'INSTANTÁNEA');
-  await standalone.locator('#showSevilla').click();assert.equal(await standalone.locator('.train-card').count(),10);await standalone.close();
+  await standalone.locator('#showSevilla').click();
+  await standalone.waitForFunction(()=>document.querySelectorAll('.train-card').length===10,null,{timeout:45000});
+  assert.equal(await standalone.locator('.train-card').count(),10);await standalone.close();
   console.log('HTML autocontenido sin red OK');
 
   const isolated=await page({viewport:{width:1200,height:800}});
@@ -106,7 +109,9 @@ try {
   const frame=await (await isolated.$('iframe')).contentFrame();await nationalReady(frame);
   await frame.waitForFunction(()=>document.querySelector('#nationalLiveBadge')?.textContent==='SIN DATOS',null,{timeout:30000});
   assert.equal(await frame.locator('#ltvBadge').innerText(),'INSTANTÁNEA');
-  await frame.locator('#showSevilla').click();assert.equal(await frame.locator('.train-card').count(),10);await isolated.close();
+  await frame.locator('#showSevilla').click();
+  await frame.waitForFunction(()=>document.querySelectorAll('.train-card').length===10,null,{timeout:45000});
+  assert.equal(await frame.locator('.train-card').count(),10);await isolated.close();
   console.log('Visor aislado: datos estáticos y simulación OK');
   assert.deepEqual(errors,[],`Errores JavaScript: ${errors.join('; ')}`);
 } finally {await browser.close();}

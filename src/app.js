@@ -5,7 +5,7 @@ import { MultiSimulation } from './multiline.js';
 import { LIVE_POLL_MS, summarizeLive, isExpressService } from './realtime.js?v=12';
 import { fetchLivePositions } from './live-source.js?v=16';
 import { createLiveMotionLayer, createLiveTrainIcon, liveIconKind } from './live-motion.js?v=12';
-import { initializeNationalMap } from './national.js?v=16';
+import { initializeNationalMap } from './national.js?v=17';
 import { initializeTimetableView } from './timetable-ui.js?v=16';
 import { initializeInfrastructure, infrastructureTrackPopup } from './infrastructure.js?v=12';
 import { initializeTheme } from './theme.js?v=12';
@@ -61,6 +61,7 @@ function setRunning(value) {
 function setDisabled() {
   for (const id of ['playButton','resetButton','incidentButton','delayButton','managedTrain','applyPlan']) $(id).disabled=!sim;
   $('routeButton').disabled=!graph; $('fitButton').disabled=!graph; $('fitRouteButton').disabled=!sim;
+  $('restoreSample').disabled=!bundledData;
 }
 function km(metres) {
   return (metres/1000).toLocaleString('es-ES',{minimumFractionDigits:1,maximumFractionDigits:1})+' km';
@@ -356,7 +357,7 @@ map.on('click',event=>{
 
 // Renfe GTFS-RT positions are separate from the fictitious simulation. The
 // browser calls only our same-origin fixed-URL proxy; it never calls localhost.
-let livePayload = null, liveReceivedAt = 0, liveBusy = false, lastLiveKey = '';
+let livePayload = null, liveReceivedAt = 0, liveBusy = false, lastLiveKey = '', localLiveTimer = null;
 const liveClock = new Intl.DateTimeFormat('es-ES', {
   timeZone: 'Europe/Madrid', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
 });
@@ -461,6 +462,14 @@ function liveUnavailable(message) {
   $('liveBadge').textContent = 'SIN DATOS'; $('liveBadge').className = 'live-badge offline';
   $('liveUpdated').textContent = message;
 }
+function scheduleLocalLive() {
+  clearTimeout(localLiveTimer);localLiveTimer=null;
+  if (!document.hidden && !$('sevillaView').hidden) {
+    localLiveTimer=setTimeout(()=>{
+      if (!document.hidden && !$('sevillaView').hidden) refreshLive();
+    },LIVE_POLL_MS);
+  }
+}
 async function refreshLive() {
   if (liveBusy) return;
   liveBusy = true;
@@ -477,14 +486,15 @@ async function refreshLive() {
   } catch (_) {
     liveUnavailable('No se pudo consultar la API local ni RadarDeTrenes; revisa la conexión.');
   } finally {
-    clearTimeout(timeout); liveBusy = false; $('liveRefresh').disabled = false;
+    clearTimeout(timeout); liveBusy = false; $('liveRefresh').disabled = false; scheduleLocalLive();
   }
 }
 $('liveRefresh').addEventListener('click', refreshLive);
-setInterval(refreshLive, LIVE_POLL_MS);
-setInterval(renderLive, 5000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderLive(); localMotion.resume(); refreshLive(); } });
-refreshLive();
+setInterval(()=>{if (!document.hidden && !$('sevillaView').hidden) renderLive();}, 5000);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {clearTimeout(localLiveTimer);localLiveTimer=null;}
+  else if (!$('sevillaView').hidden) {renderLive();localMotion.resume();refreshLive();}
+});
 
 function animationFrame(now) {
   if (previousFrame !== null && running && sim) {
@@ -502,16 +512,27 @@ function animationFrame(now) {
   requestAnimationFrame(animationFrame);
 }
 
-try {
-  const response = window.RAIL_SAMPLE ? null : await fetch('./data/sevilla-osm.json');
-  if (response && !response.ok) throw new Error(`HTTP ${response.status}`);
-  bundledData = window.RAIL_SAMPLE || await response.json();
-  loadGraph(bundledData, 'Sevilla metropolitana · OSM', true);
-} catch (error) {
-  setNotice(`No se pudieron cargar los datos: ${error.message}. Usa un servidor local.`, 'error');
-  console.error(error);
-  setDisabled();
+// Loading the Sevilla extract must not block navigation to Spain or
+// itineraries. A late startup response must not overwrite an imported graph.
+setDisabled();
+async function loadInitialSevilla() {
+  const sequence=dataLoadSequence,controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),45000);
+  try {
+    const response = window.RAIL_SAMPLE ? null : await fetch('./data/sevilla-osm.json',{signal:controller.signal});
+    if (response && !response.ok) throw new Error(`HTTP ${response.status}`);
+    bundledData = window.RAIL_SAMPLE || await response.json();
+    if (sequence===dataLoadSequence || !graph) loadGraph(bundledData, 'Sevilla metropolitana · OSM', true);
+    else setDisabled();
+  } catch (error) {
+    if (sequence===dataLoadSequence || !graph) {
+      const reason=controller.signal.aborted?'tiempo de espera agotado':error.message;
+      setNotice(`No se pudieron cargar los datos: ${reason}. Usa un servidor local.`, 'error');
+      setDisabled();
+    }
+    console.error(error);
+  } finally {clearTimeout(timeout);}
 }
+loadInitialSevilla();
 requestAnimationFrame(animationFrame);
 
 /**
@@ -638,6 +659,7 @@ async function changeView(view,updateHash=true) {
   if (!['sevilla','espana','itinerarios'].includes(view)) return;
   activeView=view;
   if (view!=='itinerarios' && timetableController) timetableController.hide();
+  if (view!=='sevilla') {clearTimeout(localLiveTimer);localLiveTimer=null;}
   if (view!=='sevilla' && running) { setRunning(false); setNotice('Simulación de Sevilla pausada al cambiar de mapa.'); render(); }
   $('sevillaView').hidden=view!=='sevilla'; $('nationalView').hidden=view!=='espana'; $('timetableView').hidden=view!=='itinerarios';
   for (const [id,current] of [['showSevilla','sevilla'],['showNational','espana'],['showTimetable','itinerarios']]) {
@@ -647,6 +669,10 @@ async function changeView(view,updateHash=true) {
   if (view==='sevilla') {
     ensureLocalBasemap();
     localMotion.resume();
+    if (!document.hidden) {
+      if (!livePayload || performance.now()-liveReceivedAt>=LIVE_POLL_MS) refreshLive();
+      else {renderLive();scheduleLocalLive();}
+    }
     requestAnimationFrame(()=>map.invalidateSize({animate:false}));
   } else if (view==='espana') {
     if (!nationalPromise) nationalPromise=initializeNationalMap(initializeBasemap);

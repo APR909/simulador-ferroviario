@@ -49,6 +49,7 @@ try {
   assert.match(await end.locator('.timetable-time-live small').innerText(),/estimada · \+10 min/);
   assert.match(await page.locator('#timetableBoardStatus').innerText(),/AUTO.*3 tablón\(es\) recientes.*2 hora\(s\) coincidentes/);
   assert.match(await page.locator('#timetable-stop-1 td').nth(1).innerText(),/sin coincidencia actual/);
+  await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+1000));
 
   // A manual check within 30 seconds reuses the shared station cache.
   await page.locator('#timetableBoardRefresh').click();
@@ -126,6 +127,7 @@ try {
   await throttle.locator('.timetable-result').first().click();
   await throttle.locator('#timetableBoardStatus').filter({hasText:'límite de consultas'}).waitFor({timeout:15000});
   assert.equal(await throttle.locator('#timetableBoardRefresh').isDisabled(),true);
+  await throttle.clock.pauseAt(new Date(await throttle.evaluate(()=>Date.now())+1000));
   const limitedCalls=requests;limited=false;await throttle.clock.fastForward(60000);
   assert.equal(requests,limitedCalls,'no debe reintentar antes de Retry-After');
   await throttle.clock.fastForward(61000);

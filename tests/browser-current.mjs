@@ -40,6 +40,7 @@ try {
   await page.goto(base+'/#itinerarios',{waitUntil:'domcontentloaded',timeout:45000});
   await page.locator('#timetableRange:not([disabled])').waitFor({timeout:45000});
   await page.locator('#timetableCurrentCount').filter({hasText:'2 / 2'}).waitFor({timeout:15000});
+  await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+1000));
   assert.equal(calls,1,'la lista se carga automáticamente sin servidor propio');
   assert.match(await page.locator('#timetableCurrentStatus').innerText(),/cobertura parcial.*1 sin hora GPS individual verificada/);
   assert.equal(await page.locator('.timetable-current-result').count(),2);

@@ -10,7 +10,7 @@ Mapa ferroviario web y simulador didáctico. La vista **España** presenta vías
 
 ### GitHub Pages: trenes sin servidor propio
 
-En GitHub Pages la aplicación es estática y no puede ejecutar `servidor.py`. Cuando falta `/api/trenes`, el navegador consulta directamente la API pública con CORS de [RadarDeTrenes](https://radardetrenes.com/docs) para posiciones AV/LD/MD y Cercanías. Se actualiza como máximo cada 30 segundos por pestaña, requiere conexión y depende de la disponibilidad del intermediario. Si el proveedor responde con HTTP 429, se respeta `Retry-After` hasta un máximo de siete días; sin cabecera válida se espera dos minutos. La cobertura es parcial; el reloj del dispositivo debe estar bien ajustado para que se validen correctamente las fechas. Los puntos de Cercanías consultados de esta forma no se animan si su hora GPS individual no puede verificarse.
+En GitHub Pages la aplicación es estática y no puede ejecutar `servidor.py`. Cuando falta `/api/trenes`, el navegador consulta directamente la API pública con CORS de [RadarDeTrenes](https://radardetrenes.com/docs) para posiciones AV/LD/MD y Cercanías. Se actualiza como máximo cada 30 segundos por pestaña, requiere conexión y depende de la disponibilidad del intermediario. Las consultas de cada vista se pausan al cambiar de vista u ocultar la pestaña y se reanudan al volver. Si el proveedor responde con HTTP 429, se respeta `Retry-After` hasta un máximo de siete días; sin cabecera válida se espera dos minutos. La cobertura es parcial; el reloj del dispositivo debe estar bien ajustado para que se validen correctamente las fechas. Los puntos de Cercanías consultados de esta forma no se animan si su hora GPS individual no puede verificarse.
 
 Además, al seleccionar un itinerario el navegador consulta automáticamente los tablones actuales mediante el mismo intermediario. En GitHub Pages las cancelaciones necesitan el servidor Python y se indican como **SIN SERVIDOR**; las LTV solo muestran la **INSTANTÁNEA** incluida, no una consulta actual. No se presenta ninguna de ellas como disponible en tiempo real.
 
@@ -87,9 +87,14 @@ La segunda orden regenera `simulador.html` a partir de los archivos modulares y 
 npm install --no-save --no-package-lock playwright
 npx playwright install chromium
 node tests/browser-motion.mjs
+node tests/browser-startup.mjs
+node tests/browser-current-loading.mjs
+node tests/browser-current-recovery.mjs
+node tests/browser-current.mjs
+node tests/browser-timetable.mjs
 ```
 
-Esta prueba opcional comprueba interpolación, caducidad, filtros, movimiento reducido, móvil y el HTML aislado; no necesita datos reales. Para otro servidor se puede fijar `VIALAB_URL`. Para probar específicamente la ruta de GitHub Pages, inicia `python3 -m http.server 8001` en otra terminal y ejecuta `node tests/browser-pages.mjs`. `node tests/browser-pages-live.mjs` es una comprobación opcional con RadarDeTrenes real y requiere red; las cifras varían y pueden ser cero.
+Estas pruebas comprueban, entre otras cosas, interpolación, caducidad, navegación durante la carga, recuperación de la fuente, horarios, móvil y el HTML aislado; utilizan datos sintéticos. Para otro servidor se puede fijar `VIALAB_URL`. Para probar específicamente la ruta de GitHub Pages, inicia `python3 -m http.server 8001` en otra terminal y ejecuta `node tests/browser-pages.mjs` y `node tests/browser-polling.mjs`. `node tests/browser-pages-live.mjs` es una comprobación opcional con RadarDeTrenes real y requiere red; las cifras varían y pueden ser cero.
 
 ## 2. Qué representan los mapas
 

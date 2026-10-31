@@ -40,6 +40,7 @@ try {
   assert.equal(radarCalls,2);await p.locator('#showSevilla').click();
   await p.waitForFunction(()=>document.querySelector('#liveTotal')?.textContent==='2');
   assert.match(await p.locator('#liveProvider').innerText(),/RadarDeTrenes.*navegador/);
+  await p.waitForFunction(()=>document.querySelectorAll('.train-card').length===10,null,{timeout:45000});
   assert.equal(await p.locator('.train-card').count(),10);await p.close();
   console.log('GitHub Pages simulado: 404 de API propia, fallback, caché, filtros y animación OK');
 

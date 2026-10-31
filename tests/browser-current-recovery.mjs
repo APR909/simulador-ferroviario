@@ -48,6 +48,9 @@ try {
   await page.goto(base+'/#itinerarios',{waitUntil:'domcontentloaded',timeout:45000});
   await page.locator('#timetableRange:not([disabled])').waitFor({timeout:45000});
   await page.locator('#timetableCurrentCount').filter({hasText:'2 / 2'}).waitFor({timeout:15000});
+  // Freeze after startup so wall/monotonic time cannot race asynchronous route
+  // handlers while the test advances the polling and Retry-After clocks.
+  await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+1000));
   const commuter=page.locator('.timetable-current-result').filter({hasText:'23502'});
   const longDistance=page.locator('.timetable-current-result').filter({hasText:'01307'});
   assert.match(await commuter.innerText(),/Sin itinerario inequívoco asociado/);
@@ -61,12 +64,20 @@ try {
 
   // A fresh snapshot that omits the selected train says so and clears the old line.
   mode='missing';await page.clock.fastForward(31000);
-  await page.locator('#timetableCurrentCount').filter({hasText:'1 / 1'}).waitFor({timeout:15000});
+  try {await page.locator('#timetableCurrentCount').filter({hasText:'1 / 1'}).waitFor({timeout:15000});}
+  catch(error) {
+    console.error('Diagnóstico de refresco:',JSON.stringify({calls,status:await page.locator('#timetableCurrentStatus').innerText(),count:await page.locator('#timetableCurrentCount').innerText(),time:await page.evaluate(()=>({wall:Date.now(),mono:performance.now()}))}));
+    throw error;
+  }
   assert.match(await page.locator('#timetableJourneyMeta').innerText(),/no aparece en la instantánea/);
   assert.equal(await lineCount(),0);
   // When the same identity reappears, update its detail and redraw its endpoints.
   mode='normal';await page.clock.fastForward(31000);
-  await page.locator('#timetableCurrentCount').filter({hasText:'2 / 2'}).waitFor({timeout:15000});
+  try {await page.locator('#timetableCurrentCount').filter({hasText:'2 / 2'}).waitFor({timeout:15000});}
+  catch(error) {
+    console.error('Diagnóstico de recuperación:',JSON.stringify({calls,status:await page.locator('#timetableCurrentStatus').innerText(),count:await page.locator('#timetableCurrentCount').innerText(),time:await page.evaluate(()=>({wall:Date.now(),mono:performance.now()}))}));
+    throw error;
+  }
   assert.match(await page.locator('#timetableJourneyMeta').innerText(),/sin itinerario GTFS inequívoco/);
   assert.equal(await lineCount(),1);
 
@@ -101,7 +112,11 @@ try {
     assert.equal(calls,limitedCalls,'no debe volver a consultar antes de Retry-After');
   }
   await page.clock.fastForward(31000);
-  await page.locator('#timetableCurrentCount').filter({hasText:'2 / 2'}).waitFor({timeout:15000});
+  try {await page.locator('#timetableCurrentCount').filter({hasText:'2 / 2'}).waitFor({timeout:15000});}
+  catch(error) {
+    console.error('Diagnóstico de Retry-After:',JSON.stringify({calls,limitedCalls,status:await page.locator('#timetableCurrentStatus').innerText(),count:await page.locator('#timetableCurrentCount').innerText(),time:await page.evaluate(()=>({wall:Date.now(),mono:performance.now()}))}));
+    throw error;
+  }
   assert.equal(calls,limitedCalls+1);
   assert.deepEqual(errors,[]);
   console.log('OK · identidad entre tipos, recuperación y límite HTTP 429');
