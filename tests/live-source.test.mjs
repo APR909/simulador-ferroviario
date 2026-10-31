@@ -93,3 +93,40 @@ test('una ruta contradictoria en duplicados no se usa para emparejar itinerarios
   const parsed=parseRadarBrowserFleet(fleet([train('x',{originCode:'1',destinationCode:'2'}),train('x',{originCode:'1',destinationCode:'3'})]));
   assert.equal(parsed.valid[0].route_ambiguous,true);assert.equal(parsed.valid[0].destination_code,'');
 });
+
+test('un mismo identificador de Radar en tipos distintos no mezcla los trenes',()=>{
+  const parsed=parseRadarBrowserFleet(fleet([
+    train('mismo-id',{trainCode:'01307',originCode:'51003',destinationCode:'51405'}),
+    train('mismo-id',{trainCode:'23502',type:'commuter',originCode:'51003',destinationCode:'51405'}),
+  ]));
+  const snapshot=radarBrowserSnapshot(parsed,'espana',NOW);
+  const ld=snapshot.feeds.larga_distancia.vehicles[0],cc=snapshot.feeds.cercanias.vehicles[0];
+  assert.notEqual(ld.id,cc.id,'la identidad debe incluir el tipo de servicio');
+});
+
+test('la flota respeta Retry-After ante HTTP 429 incluso en consultas compartidas',async()=>{
+  let ms=0,calls=0;
+  const source=createLiveSource({clock:()=>NOW+ms/1000,monotonic:()=>ms,protocol:()=> 'file:',fetchImpl:async()=>{
+    calls++;
+    if(calls===1)return {ok:false,status:429,headers:{get:name=>name.toLowerCase()==='retry-after'?'120':null}};
+    return response(fleet([train('av',{timestamp:iso(NOW+ms/1000)})],NOW+ms/1000));
+  }});
+  await assert.rejects(source.get('espana'),/429/);
+  ms=30000;await assert.rejects(source.get('sevilla'),/429/);assert.equal(calls,1);
+  ms=119999;await assert.rejects(source.get('espana'),/429/);assert.equal(calls,1);
+  ms=120000;assert.equal((await source.get('espana')).feeds.larga_distancia.count,1);assert.equal(calls,2);
+});
+
+test('Retry-After en fecha HTTP y sin cabecera se aplica desde la respuesta',async()=>{
+  for(const [header,delay] of [[new Date((NOW+95)*1000).toUTCString(),90000],[null,120000]]) {
+    let ms=0,calls=0;
+    const source=createLiveSource({clock:()=>NOW+ms/1000,monotonic:()=>ms,protocol:()=> 'file:',fetchImpl:async()=>{
+      calls++;
+      if(calls===1){ms=5000;return {ok:false,status:429,headers:{get:()=>header}};}
+      return response(fleet([train('av',{timestamp:iso(NOW+ms/1000)})],NOW+ms/1000));
+    }});
+    await assert.rejects(source.get('espana'),/429/);
+    ms=5000+delay-1;await assert.rejects(source.get('sevilla'),/429/);assert.equal(calls,1);
+    ms=5000+delay;assert.equal((await source.get('espana')).feeds.larga_distancia.count,1);assert.equal(calls,2);
+  }
+});

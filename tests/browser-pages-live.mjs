@@ -8,8 +8,8 @@ try {
  page.on('pageerror',e=>errors.push(e.message));
  page.on('response',async r=>{if(r.url().startsWith('https://radardetrenes.com/api/v1/fleet'))console.log('Radar:',r.status(),'CORS:',(await r.allHeaders())['access-control-allow-origin']);});
  await page.goto(base+'/',{waitUntil:'domcontentloaded'});
- await page.waitForFunction(()=>document.querySelector('#nationalWayCount')?.textContent==='45.695',{timeout:60000});
- await page.waitForFunction(()=>!document.querySelector('#nationalAVStatus')?.textContent.includes('Consultando'),{timeout:40000});
+ await page.waitForFunction(()=>document.querySelector('#nationalWayCount')?.textContent==='45.695',null,{timeout:60000});
+ await page.waitForFunction(()=>!document.querySelector('#nationalAVStatus')?.textContent.includes('Consultando'),null,{timeout:40000});
  const status=await page.locator('#nationalAVStatus').innerText(),cc=await page.locator('#nationalCCStatus').innerText();
  console.log('AV/LD/MD:',await page.locator('#nationalAVCount').innerText(),status);
  console.log('Cercanías:',await page.locator('#nationalCCCount').innerText(),cc);

@@ -83,7 +83,7 @@ try {
   await page.locator('#timetableCurrentStatus').filter({hasText:'SIN DATOS RECIENTES'}).waitFor({timeout:15000});
   assert.equal(await page.locator('#timetableCurrentCount').innerText(),'—');
   assert.equal(await page.locator('.timetable-current-result').count(),0);
-  assert.match(await page.locator('#timetableJourneyMeta').innerText(),/no aparece en la instantánea/);
+  assert.match(await page.locator('#timetableJourneyMeta').innerText(),/sin datos recientes|no se puede confirmar/i);
   assert.deepEqual(errors,[]);
   console.log('OK · recorridos actuales, cruce GTFS, filtros, pausa y caducidad');
 

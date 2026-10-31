@@ -201,16 +201,21 @@
 			this._update();
 		},
 		_transitionEnd: function(e) {
+			// Vía Lab safety patch: a basemap failure can remove or replace this
+			// layer while either of these asynchronous callbacks is pending.
+			var map = this._map, gl = this._glMap;
+			if (!map || !gl) return;
 			L.Util.requestAnimFrame(function() {
-				var zoom = this._map.getZoom();
-				var center = this._map.getCenter();
-				var offset = this._map.latLngToContainerPoint(this._map.getBounds().getNorthWest());
+				if (this._map !== map || this._glMap !== gl) return;
+				var zoom = map.getZoom();
+				var center = map.getCenter();
+				var offset = map.latLngToContainerPoint(map.getBounds().getNorthWest());
 				this._resizeContainer();
-				L.DomUtil.setTransform(this._glMap._actualCanvas, offset, 1);
-				this._glMap.once("moveend", L.Util.bind(function() {
-					this._zoomEnd();
+				L.DomUtil.setTransform(gl._actualCanvas, offset, 1);
+				gl.once("moveend", L.Util.bind(function() {
+					if (this._map === map && this._glMap === gl) this._zoomEnd();
 				}, this));
-				this._glMap.jumpTo({
+				gl.jumpTo({
 					center,
 					zoom: zoom - 1
 				});

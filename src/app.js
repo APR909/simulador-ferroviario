@@ -3,10 +3,10 @@ import { pointAt, sliceRoute } from './geo.js';
 import { buildDemoScenario, makeCustomScenarioLine } from './scenario.js';
 import { MultiSimulation } from './multiline.js';
 import { LIVE_POLL_MS, summarizeLive, isExpressService } from './realtime.js?v=12';
-import { fetchLivePositions } from './live-source.js?v=15';
+import { fetchLivePositions } from './live-source.js?v=16';
 import { createLiveMotionLayer, createLiveTrainIcon, liveIconKind } from './live-motion.js?v=12';
-import { initializeNationalMap } from './national.js?v=15';
-import { initializeTimetableView } from './timetable-ui.js?v=15';
+import { initializeNationalMap } from './national.js?v=16';
+import { initializeTimetableView } from './timetable-ui.js?v=16';
 import { initializeInfrastructure, infrastructureTrackPopup } from './infrastructure.js?v=12';
 import { initializeTheme } from './theme.js?v=12';
 
@@ -562,7 +562,7 @@ async function initializeBasemap(targetMap=map, status=$('baseStatusText'), retr
     const embedded = window.RAIL_BASEMAP_URLS || {};
     const libraryUrl = embedded.library || new URL('../vendor/maplibre-gl.mjs', import.meta.url).href;
     const workerUrl = embedded.worker || new URL('../vendor/maplibre-gl-worker.mjs', import.meta.url).href;
-    const pluginUrl = embedded.plugin || new URL('../vendor/leaflet-maplibre-gl.js', import.meta.url).href;
+    const pluginUrl = embedded.plugin || new URL('../vendor/leaflet-maplibre-gl.js?v=16', import.meta.url).href;
     const maplibre = await import(libraryUrl);
     maplibre.setWorkerUrl(workerUrl);
     window.maplibregl = maplibre;

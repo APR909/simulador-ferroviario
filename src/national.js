@@ -1,5 +1,5 @@
 import { LIVE_POLL_MS, summarizeLive, isExpressService } from './realtime.js?v=12';
-import { fetchLivePositions } from './live-source.js?v=15';
+import { fetchLivePositions } from './live-source.js?v=16';
 import { createLiveMotionLayer, createLiveTrainIcon, liveIconKind } from './live-motion.js?v=12';
 import { initializeInfrastructure, infrastructureTrackPopup } from './infrastructure.js?v=12';
 import { initializeLimitations } from './limitations.js?v=12';

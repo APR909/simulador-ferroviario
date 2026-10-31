@@ -1,6 +1,6 @@
 import { TIMETABLE_URL, TIMETABLE_WINDOW_MS, TIMETABLE_BOARD_REFRESH_MS, indexTimetable, findTimetableJourneys, formatTimetableTime, timetableSearchText, madridCalendarDate, matchBoardEvent, createBoardSource, isTimetableBoardFresh, isTimetableBoardValueFresh } from './timetable.js?v=15';
 import { LIVE_POLL_MS, summarizeLive, recentTimestamp } from './realtime.js?v=12';
-import { fetchRadarPositions } from './live-source.js?v=15';
+import { fetchRadarPositions } from './live-source.js?v=16';
 import { matchLiveJourneys } from './live-journeys.js?v=15';
 
 const timetableElement = id => document.getElementById(id);
@@ -35,9 +35,9 @@ export async function initializeTimetableView(setupBasemap) {
   L.control.zoom({position:'topright'}).addTo(map);
   map.attributionControl.addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>');
   const drawing=L.layerGroup().addTo(map),currentLayer=L.layerGroup().addTo(map),boardSource=createBoardSource();
-  const state={index:null,windowEnd:Date.now(),results:[],limit:12,selected:null,boardValues:new Map(),stationStates:new Map(),
+  const state={index:null,timetableStatus:'loading',windowEnd:Date.now(),results:[],limit:12,selected:null,boardValues:new Map(),stationStates:new Map(),
     selectionVersion:0,active:false,poll:null,pollTimer:null,expiryTimer:null,lastCycle:null,firstCycle:false,retryAfter:0,markers:new Map(),statusBase:'',
-    current:{payload:null,vehicles:[],filtered:[],matches:new Map(),selectedId:null,selectedKey:null,selectedSignature:'',limit:8,busy:false,sequence:0,timer:null,expiry:null,status:'loading'}};
+    current:{payload:null,vehicles:[],filtered:[],matches:new Map(),selectedId:null,selectedKey:null,selectedSignature:'',pendingMatch:false,limit:8,busy:false,sequence:0,timer:null,expiry:null,status:'loading'}};
   setupBasemap(map,timetableElement('timetableBaseStatus'),timetableElement('timetableBaseRetry'));
   timetableElement('timetableBaseRetry').addEventListener('click',()=>setupBasemap(map,timetableElement('timetableBaseStatus'),timetableElement('timetableBaseRetry')));
 
@@ -73,7 +73,7 @@ export async function initializeTimetableView(setupBasemap) {
     timetableElement('timetableMore').textContent=`Mostrar más (${Math.max(0,state.results.length-state.limit)} restantes)`;
   }
   function resetSelection() {
-    state.selectionVersion++;stopAuto();state.selected=null;state.current.selectedId=null;state.current.selectedKey=null;state.current.selectedSignature='';state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;state.firstCycle=false;state.markers.clear();drawing.clearLayers();
+    state.selectionVersion++;stopAuto();state.selected=null;state.current.selectedId=null;state.current.selectedKey=null;state.current.selectedSignature='';state.current.pendingMatch=false;state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;state.firstCycle=false;state.markers.clear();drawing.clearLayers();
     timetableElement('timetableJourneyHeading').textContent='Selecciona un viaje';
     timetableElement('timetableJourneyMeta').textContent='Se mostrarán las paradas y sus horas publicadas.';
     timetableElement('timetableMapNotice').textContent='Selecciona un viaje para ver sus estaciones.';
@@ -104,7 +104,7 @@ export async function initializeTimetableView(setupBasemap) {
     else if(state.selected) {
       const journey=state.selected;
       const current=state.current.selectedId ? state.current.vehicles.find(v=>v.id===state.current.selectedId) : null;
-      const observation=state.current.selectedId ? (current?' · detectado en la última instantánea':' · ya no aparece en la instantánea actual') : '';
+      const observation=state.current.selectedId ? ` · ${current && state.current.status==='ready' ? 'detectado en la última instantánea' : currentSelectionUnavailable()}` : '';
       timetableElement('timetableJourneyMeta').textContent=`${currentDescription(journey)} · día de servicio ${timetableDateLabel(journey.serviceDate)} · según horario${observation}`+
         (selectedIsListed?'':' · viaje conservado para seguimiento, fuera del instante programado');
     }
@@ -215,7 +215,7 @@ export async function initializeTimetableView(setupBasemap) {
     renderStops();updateBoardStatus();
   }
   function selectJourney(journey,{liveId=null}={}) {
-    state.selectionVersion++;stopAuto();state.selected=journey;state.current.selectedId=liveId;state.current.selectedKey=liveId ? journey.key : null;state.current.selectedSignature=liveId ? currentIdentity(state.current.vehicles.find(v=>v.id===liveId)) : '';state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;state.firstCycle=true;
+    state.selectionVersion++;stopAuto();state.selected=journey;state.current.selectedId=liveId;state.current.selectedKey=liveId ? journey.key : null;state.current.selectedSignature=liveId ? currentIdentity(state.current.vehicles.find(v=>v.id===liveId)) : '';state.current.pendingMatch=false;state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;state.firstCycle=true;
     timetableElement('timetableJourneyHeading').textContent=timetablePatternName(journey);
     timetableElement('timetableJourneyMeta').textContent=`${currentDescription(journey)} · día de servicio ${timetableDateLabel(journey.serviceDate)} · según horario`;
     drawJourney(journey);renderStops();renderList();renderCurrentList();renderCurrentMap();updateBoardStatus();
@@ -299,6 +299,47 @@ export async function initializeTimetableView(setupBasemap) {
   function currentRoute(vehicle) {
     return `${vehicle.origin || 'Origen no publicado'} → ${vehicle.destination || 'Destino no publicado'}`;
   }
+  function currentSelectionUnavailable() {
+    switch(state.current.status) {
+      case 'ready': return 'ya no aparece en la instantánea actual; esto no confirma que haya terminado';
+      case 'paused': return 'consulta pausada; posición actual no confirmada';
+      case 'loading': return 'consultando la posición actual';
+      default: return 'sin datos recientes; no se puede confirmar la posición actual';
+    }
+  }
+  // Keep a selected, unmatched train truthful across loss and recovery. The
+  // schematic is restored on reappearance without moving the user's map.
+  function drawUnmatchedCurrent(vehicle,{focus=false}={}) {
+    drawing.clearLayers();
+    if(!vehicle) {
+      timetableElement('timetableJourneyMeta').textContent=currentSelectionUnavailable();
+      timetableElement('timetableMapNotice').textContent='Sin posición actual confirmada; no se dibuja un recorrido observado.';
+      timetableElement('timetableBoardStatus').textContent='Sin datos actuales del tren seleccionado; no se inventan horarios.';
+      const cell=timetableNode('td','Sin datos confirmados no se pueden mostrar paradas ni horarios actuales.');cell.colSpan=3;
+      const row=timetableNode('tr');row.append(cell);timetableElement('timetableStops').replaceChildren(row);
+      return;
+    }
+    const pending=!state.index && state.timetableStatus==='loading',unavailable=!state.index && state.timetableStatus==='error';
+    timetableElement('timetableJourneyMeta').textContent=`${currentRoute(vehicle)} · ${pending?'horarios cargando':unavailable?'horarios no disponibles':'sin itinerario GTFS inequívoco'}`;
+    timetableElement('timetableBoardStatus').textContent=pending?'Cargando horarios; aún no se pueden confirmar las paradas.':
+      unavailable?'Horarios no disponibles; no se inventan paradas ni horarios.':'Sin paradas asociadas con seguridad; no se inventan horarios.';
+    const cell=timetableNode('td',pending?'Cargando los horarios programados.':unavailable?'No hay horarios disponibles para contrastar este tren.':
+      'La fuente muestra este tren, pero no hay una coincidencia única de recorrido y horario.');cell.colSpan=3;
+    const row=timetableNode('tr');row.append(cell);timetableElement('timetableStops').replaceChildren(row);
+    const stops=state.index?.metadata?.stops || [],origin=timetableBoardCode(vehicle.origin_code),destination=timetableBoardCode(vehicle.destination_code);
+    const start=!vehicle.route_ambiguous && origin ? stops.find(s=>timetableBoardCode(s[0])===origin) : null;
+    const end=!vehicle.route_ambiguous && destination ? stops.find(s=>timetableBoardCode(s[0])===destination) : null;
+    const points=[[vehicle.latitude,vehicle.longitude]];
+    if(start && end && [start[2],start[3],end[2],end[3]].every(Number.isFinite)) {
+      const endpoints=[[start[2],start[3]],[end[2],end[3]]];L.polyline(endpoints,{color:'#32a893',weight:3,opacity:.8,dashArray:'6 8',interactive:false}).addTo(drawing);
+      for(const point of endpoints)L.circleMarker(point,{radius:5,color:'#fff',weight:2,fillColor:'#edab58',fillOpacity:1}).addTo(drawing);
+      points.push(...endpoints);
+    }
+    timetableElement('timetableMapNotice').textContent='Punto de la instantánea actual; si hay línea, solo une origen y destino, no representa el trazado real.';
+    if(focus) {
+      const bounds=L.latLngBounds(points);if(points.length>1)map.fitBounds(bounds,{padding:[35,35],maxZoom:10,animate:false});else map.setView(points[0],9,{animate:false});
+    }
+  }
   function renderCurrentList() {
     const live=state.current,container=timetableElement('timetableCurrentResults'),count=timetableElement('timetableCurrentCount');
     const query=timetableSearchText(timetableElement('timetableCurrentSearch').value),type=timetableElement('timetableCurrentType').value;
@@ -317,7 +358,9 @@ export async function initializeTimetableView(setupBasemap) {
       const detail=[vehicle.line,vehicle.next_station?`Próxima: ${vehicle.next_station}`:'',
         Number.isInteger(vehicle.delay_minutes)?`Demora publicada: ${timetableDelayLabel(vehicle.delay_minutes)}`:''].filter(Boolean).join(' · ');
       if(detail)button.append(timetableNode('span',detail,'timetable-result-time'));
-      button.append(timetableNode('span',live.matches.has(vehicle.id)?'Paradas programadas disponibles':'Sin itinerario inequívoco asociado','timetable-current-match'));
+      const matchLabel=live.matches.has(vehicle.id)?'Paradas programadas disponibles':!state.index && state.timetableStatus==='loading'?'Cargando horarios…':
+        !state.index && state.timetableStatus==='error'?'Horarios no disponibles':'Sin itinerario inequívoco asociado';
+      button.append(timetableNode('span',matchLabel,'timetable-current-match'));
       button.addEventListener('click',()=>selectCurrent(vehicle.id));container.append(button);
     }
     const more=timetableElement('timetableCurrentMore');more.hidden=live.status!=='ready' || live.limit>=live.filtered.length;
@@ -345,6 +388,7 @@ export async function initializeTimetableView(setupBasemap) {
     if(!summary && live.payload)summary=summarizeLive(live.payload,Date.now()/1000);
     if(live.status==='paused'){status.textContent='Consulta pausada mientras esta vista o pestaña está oculta.';return;}
     if(live.status==='loading'){status.textContent='Consultando la flota actual de RadarDeTrenes…';return;}
+    if(live.status==='rate'){status.textContent='SIN DATOS RECIENTES · el proveedor limita las consultas; se respetará su tiempo de espera.';return;}
     if(live.status!=='ready'){status.textContent='SIN DATOS RECIENTES · la fuente no está disponible o la instantánea está desactualizada.';return;}
     const observed=summary?.cercanias?.feed_time_fallback ?? live.vehicles.filter(v=>v.time_basis==='feed').length;
     const times=[summary?.cercanias?.header_timestamp,summary?.larga?.header_timestamp].filter(Number.isFinite);
@@ -361,14 +405,22 @@ export async function initializeTimetableView(setupBasemap) {
     // an old selected itinerary if its route or unique service date changes.
     if(selectedVehicle && (currentIdentity(selectedVehicle)!==live.selectedSignature ||
        (live.selectedKey && live.matches.get(live.selectedId)?.key!==live.selectedKey))) {
-      live.selectedId=null;live.selectedKey=null;live.selectedSignature='';
-      if(!state.selected){drawing.clearLayers();timetableElement('timetableJourneyMeta').textContent='Ya no se puede verificar que sea la misma circulación.';}
+      live.selectedId=null;live.selectedKey=null;live.selectedSignature='';live.pendingMatch=false;
+      if(!state.selected){
+        drawUnmatchedCurrent(null);
+        timetableElement('timetableJourneyMeta').textContent='Ya no se puede verificar que sea la misma circulación.';
+      }
+    }
+    // If a train was selected before the timetable was available, associate
+    // it when both the GTFS and that same fresh identity are present. This
+    // also works if the user temporarily left the view during the download.
+    if(live.pendingMatch && state.index && live.selectedId && selectedVehicle) {
+      const journey=live.matches.get(live.selectedId);live.pendingMatch=false;
+      if(journey)selectJourney(journey,{liveId:live.selectedId});
     }
     renderCurrentList();renderCurrentMap();updateCurrentStatus(summary);
     if(state.selected)updateResults({preserveSelection:true});
-    else if(live.selectedId && !live.vehicles.some(v=>v.id===live.selectedId)) {
-      drawing.clearLayers();timetableElement('timetableJourneyMeta').textContent='Ya no aparece en la instantánea actual; esto no confirma que haya terminado.';
-    }
+    else if(live.selectedId)drawUnmatchedCurrent(selectedVehicle || null);
     clearTimeout(live.expiry);live.expiry=null;
     if(live.status==='ready' && currentCanPoll()) {
       const deadlines=[summary.cercanias,summary.larga].filter(f=>['fresh','partial'].includes(f.status)).map(f=>f.header_timestamp*1000+90001);
@@ -380,27 +432,35 @@ export async function initializeTimetableView(setupBasemap) {
     const live=state.current;clearTimeout(live.timer);clearTimeout(live.expiry);live.timer=null;live.expiry=null;
     live.sequence++;live.busy=false;live.payload=null;live.vehicles=[];live.matches=new Map();live.status='paused';
     renderCurrentList();renderCurrentMap();updateCurrentStatus();
+    if(state.selected && live.selectedId)updateResults({preserveSelection:true});
+    else if(live.selectedId)drawUnmatchedCurrent(null);
   }
   async function refreshCurrentFleet() {
     const live=state.current;if(!currentCanPoll()||live.busy)return;
     live.busy=true;const sequence=++live.sequence;
-    if(!live.payload){live.status='loading';updateCurrentStatus();}
+    if(!live.payload){
+      live.status='loading';updateCurrentStatus();
+      if(state.selected && live.selectedId)updateResults({preserveSelection:true});
+      else if(live.selectedId)drawUnmatchedCurrent(null);
+    }
     try {
       const payload=await fetchRadarPositions('espana');
       if(sequence!==live.sequence || !currentCanPoll())return;
       live.payload=payload;updateCurrentFromPayload();
-    } catch(_) {
+    } catch(error) {
       if(sequence!==live.sequence || !currentCanPoll())return;
-      live.payload=null;live.vehicles=[];live.matches=new Map();live.status='error';
+      clearTimeout(live.expiry);live.expiry=null;
+      live.payload=null;live.vehicles=[];live.matches=new Map();live.status=error?.status===429?'rate':'error';
       renderCurrentList();renderCurrentMap();updateCurrentStatus();
       if(state.selected && live.selectedId)updateResults({preserveSelection:true});
+      else if(live.selectedId)drawUnmatchedCurrent(null);
     } finally {
       if(sequence===live.sequence){live.busy=false;clearTimeout(live.timer);if(currentCanPoll())live.timer=setTimeout(refreshCurrentFleet,LIVE_POLL_MS);}
     }
   }
   function selectCurrent(id) {
     const live=state.current,vehicle=live.vehicles.find(v=>v.id===id);if(!vehicle)return;
-    live.selectedId=id;live.selectedKey=null;live.selectedSignature=currentIdentity(vehicle);
+    live.selectedId=id;live.selectedKey=null;live.selectedSignature=currentIdentity(vehicle);live.pendingMatch=!state.index && state.timetableStatus==='loading';
     const journey=live.matches.get(id);
     state.windowEnd=Date.now();timetableElement('timetableRange').value='1440';
     if(journey) {
@@ -408,22 +468,8 @@ export async function initializeTimetableView(setupBasemap) {
     } else {
       state.selectionVersion++;stopAuto();state.selected=null;state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;state.markers.clear();drawing.clearLayers();
       timetableElement('timetableJourneyHeading').textContent=currentName(vehicle);
-      timetableElement('timetableJourneyMeta').textContent=`${currentRoute(vehicle)} · sin itinerario GTFS inequívoco`;
       timetableElement('timetableBoardRefresh').disabled=true;
-      timetableElement('timetableBoardStatus').textContent='Sin paradas asociadas con seguridad; no se inventan horarios.';
-      const cell=timetableNode('td','La fuente muestra este tren, pero no hay una coincidencia única de recorrido y horario.');cell.colSpan=3;
-      const row=timetableNode('tr');row.append(cell);timetableElement('timetableStops').replaceChildren(row);
-      const stops=state.index?.metadata?.stops || [],origin=timetableBoardCode(vehicle.origin_code),destination=timetableBoardCode(vehicle.destination_code);
-      const start=!vehicle.route_ambiguous && origin ? stops.find(s=>timetableBoardCode(s[0])===origin) : null;
-      const end=!vehicle.route_ambiguous && destination ? stops.find(s=>timetableBoardCode(s[0])===destination) : null;
-      const points=[[vehicle.latitude,vehicle.longitude]];
-      if(start && end && [start[2],start[3],end[2],end[3]].every(Number.isFinite)) {
-        const endpoints=[[start[2],start[3]],[end[2],end[3]]];L.polyline(endpoints,{color:'#32a893',weight:3,opacity:.8,dashArray:'6 8',interactive:false}).addTo(drawing);
-        for(const point of endpoints)L.circleMarker(point,{radius:5,color:'#fff',weight:2,fillColor:'#edab58',fillOpacity:1}).addTo(drawing);
-        points.push(...endpoints);
-      }
-      timetableElement('timetableMapNotice').textContent='Punto de la instantánea actual; si hay línea, solo une origen y destino, no representa el trazado real.';
-      const bounds=L.latLngBounds(points);if(points.length>1)map.fitBounds(bounds,{padding:[35,35],maxZoom:10,animate:false});else map.setView(points[0],9,{animate:false});
+      drawUnmatchedCurrent(vehicle,{focus:true});
       updateClock();renderList();renderCurrentList();renderCurrentMap();
       if(window.matchMedia?.('(max-width:650px)').matches)timetableElement('timetableJourneyHeading').scrollIntoView({behavior:'smooth',block:'center'});
     }
@@ -456,22 +502,35 @@ export async function initializeTimetableView(setupBasemap) {
     advanceWindow();
   },60000);
   updateClock();
-  try {
-    let payload=window.RAIL_TIMETABLE_SAMPLE;
-    if(!payload){const response=await fetch(TIMETABLE_URL);if(!response.ok)throw new Error(`HTTP ${response.status}`);payload=await response.json();}
-    state.index=indexTimetable(payload);
-    const [av,cer]=payload.sources;
-    const captured=Date.parse(payload.generated_at);
-    const date=Number.isFinite(captured)?formatTimetableTime(captured):'desconocida';
-    state.statusBase=`Instantánea ${date} · Días de servicio incluidos: AV/LD/MD ${timetableDateLabel(av.included_from)}–${timetableDateLabel(av.included_until)}; Cercanías ${timetableDateLabel(cer.included_from)}–${timetableDateLabel(cer.included_until)}. Puede haber horarios incompletos o cambios.`;
-    timetableElement('timetableRange').disabled=false;timetableElement('timetableSearch').disabled=false;
-    updateResults();
-  } catch(error) {
-    timetableElement('timetableDatasetStatus').textContent=`No se pudieron cargar los horarios: ${error.message}.`;
-    timetableElement('timetableCount').textContent='—';
-    timetableElement('timetableResults').replaceChildren(timetableNode('p','No hay una instantánea de horarios disponible.','timetable-empty'));
-    console.error(error);
+  // Timetable downloads can be slow or fail independently of Radar. Do not
+  // block showing the live fleet while the scheduled dataset is loading.
+  async function loadTimetable() {
+    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),45000);
+    try {
+      let payload=window.RAIL_TIMETABLE_SAMPLE;
+      if(!payload){const response=await fetch(TIMETABLE_URL,{signal:controller.signal});if(!response.ok)throw new Error(`HTTP ${response.status}`);payload=await response.json();}
+      state.index=indexTimetable(payload);state.timetableStatus='ready';
+      const [av,cer]=payload.sources;
+      const captured=Date.parse(payload.generated_at);
+      const date=Number.isFinite(captured)?formatTimetableTime(captured):'desconocida';
+      state.statusBase=`Instantánea ${date} · Días de servicio incluidos: AV/LD/MD ${timetableDateLabel(av.included_from)}–${timetableDateLabel(av.included_until)}; Cercanías ${timetableDateLabel(cer.included_from)}–${timetableDateLabel(cer.included_until)}. Puede haber horarios incompletos o cambios.`;
+      timetableElement('timetableRange').disabled=false;timetableElement('timetableSearch').disabled=false;
+      updateResults({preserveSelection:true});
+      if(state.current.payload)updateCurrentFromPayload();
+    } catch(error) {
+      state.timetableStatus='error';state.current.pendingMatch=false;
+      const reason=controller.signal.aborted?'tiempo de espera agotado':error.message;
+      timetableElement('timetableDatasetStatus').textContent=`No se pudieron cargar los horarios: ${reason}.`;
+      timetableElement('timetableCount').textContent='—';
+      timetableElement('timetableResults').replaceChildren(timetableNode('p','No hay una instantánea de horarios disponible.','timetable-empty'));
+      if(state.current.payload) {
+        renderCurrentList();renderCurrentMap();
+        if(!state.selected && state.current.selectedId)drawUnmatchedCurrent(state.current.vehicles.find(v=>v.id===state.current.selectedId) || null);
+      }
+      console.error(error);
+    } finally {clearTimeout(timeout);}
   }
+  loadTimetable();
   return {
     show(){
       state.active=true;

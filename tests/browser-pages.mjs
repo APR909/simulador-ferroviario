@@ -9,7 +9,7 @@ const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disab
 let errors=[];
 async function makePage(){const p=await browser.newPage({viewport:{width:1440,height:900}});p.setDefaultTimeout(30000);p.on('pageerror',e=>errors.push(e.message));
   await p.addInitScript(()=>{let value;window.__testMaps={};Object.defineProperty(window,'L',{configurable:true,get(){return value},set(v){value=v;if(v?.map){const old=v.map;v.map=(id,...a)=>{const map=old(id,...a);window.__testMaps[id]=map;return map}}}})});return p;}
-async function ready(p){await p.waitForFunction(()=>document.querySelector('#nationalWayCount')?.textContent==='45.695',{timeout:60000});}
+async function ready(p){await p.waitForFunction(()=>document.querySelector('#nationalWayCount')?.textContent==='45.695',null,{timeout:60000});}
 const markerLat=(p,id)=>p.evaluate(id=>Object.values(window.__testMaps.nationalMap._layers).find(m=>m.options?.title?.includes(id))?.getLatLng().lat,id);
 try {
   const p=await makePage();let radarCalls=0,baseTime=Math.floor(Date.now()/1000);
@@ -35,7 +35,7 @@ try {
   assert.equal(await markerLat(p,'SINTETICO'),37.39);
   // Wait for the ordinary 30 s poll rather than modifying browser clocks;
   // requestAnimationFrame and performance.now must share a time base.
-  await p.waitForFunction(()=>document.querySelector('.national-marker.is-interpolating'),{timeout:45000});
+  await p.waitForFunction(()=>document.querySelector('.national-marker.is-interpolating'),null,{timeout:45000});
   await p.waitForTimeout(1000);const lat=await markerLat(p,'SINTETICO');assert.ok(lat>37.39&&lat<37.40);
   assert.equal(radarCalls,2);await p.locator('#showSevilla').click();
   await p.waitForFunction(()=>document.querySelector('#liveTotal')?.textContent==='2');

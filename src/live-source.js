@@ -43,7 +43,9 @@ export function parseRadarBrowserFleet(payload) {
     const latitude=row.latitude,longitude=row.longitude;
     if(!identifier || !label || !timestamp || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude< -90 || latitude>90 || longitude< -180 || longitude>180) {invalid[type]++;continue;}
     const trip=radarBrowserText(row.tripId,100);
-    const entry={id:`radar:${identifier}`,label,trip_id:trip,trip_ids:trip?[trip]:[],latitude,longitude,observed_at:timestamp,
+    // Radar's raw identifier is not guaranteed to be globally unique across
+    // service types. Keep identities distinct before maps, matching or UI use.
+    const entry={id:`radar:${type}:${identifier}`,label,trip_id:trip,trip_ids:trip?[trip]:[],latitude,longitude,observed_at:timestamp,
       // The independent commuter feed currently appears to stamp positions at
       // aggregation time. Until an individual GPS time can be verified, do not
       // animate its points or present that time as an exact GPS measurement.
@@ -108,21 +110,34 @@ export function radarBrowserSnapshot(parsed,scope,now,fetchedAt=now) {
 /** One shared upstream fetch per browser per 30 s, including failed attempts. */
 export function createLiveSource({fetchImpl=(...args)=>globalThis.fetch(...args),clock=()=>Date.now()/1000,
   monotonic=()=>performance.now(),protocol=()=>globalThis.location?.protocol||'https:'}={}) {
-  let cached=null,lastAttempt=null,pending=null,lastError=null;
+  let cached=null,lastAttempt=null,pending=null,lastError=null,retryUntil=null;
   async function directSnapshot(scope) {
-    const elapsed=lastAttempt===null ? Infinity : monotonic()-lastAttempt;
-    if(!pending && (lastAttempt===null || elapsed<0 || elapsed>=LIVE_POLL_MS)) {
-      lastAttempt=monotonic();
+    const current=monotonic(),elapsed=lastAttempt===null ? Infinity : current-lastAttempt;
+    if(elapsed<0)retryUntil=null; // defensive if an injected clock is reset
+    if(!pending && (retryUntil===null || current>=retryUntil) && (lastAttempt===null || elapsed<0 || elapsed>=LIVE_POLL_MS)) {
+      lastAttempt=current;
       pending=(async()=>{
         const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
         try {
           const response=await fetchImpl(RADAR_BROWSER_URL,{method:'GET',credentials:'omit',cache:'default',signal:controller.signal});
-          if(!response.ok)throw new Error(`RadarDeTrenes HTTP ${response.status}`);
+          if(!response.ok) {
+            const error=new Error(`RadarDeTrenes HTTP ${response.status}`);error.status=response.status;
+            if(response.status===429) {
+              const raw=response.headers?.get?.('retry-after');
+              const value=typeof raw==='string' ? raw.trim() : '';
+              const delay=/^\d+$/.test(value) ? Number(value)*1000 : value ? Date.parse(value)-clock()*1000 : NaN;
+              // Bound untrusted headers while observing ordinary Retry-After
+              // values; without a usable header wait two minutes by default.
+              error.retryAfterMs=Number.isFinite(delay) && delay>=0 ? Math.min(delay,7*86400000) : 120000;
+              retryUntil=monotonic()+error.retryAfterMs;
+            }
+            throw error;
+          }
           const length=Number(response.headers?.get?.('content-length'));
           if(Number.isFinite(length) && length>RADAR_BROWSER_MAX_BYTES)throw new Error('Respuesta RadarDeTrenes demasiado grande.');
           const text=await response.text();
           if(text.length>RADAR_BROWSER_MAX_BYTES)throw new Error('Respuesta RadarDeTrenes demasiado grande.');
-          cached={parsed:parseRadarBrowserFleet(JSON.parse(text)),fetchedAt:clock()};lastError=null;
+          cached={parsed:parseRadarBrowserFleet(JSON.parse(text)),fetchedAt:clock()};lastError=null;retryUntil=null;
         } catch(error) {cached=null;lastError=error;}
         finally {clearTimeout(timeout);}
       })();

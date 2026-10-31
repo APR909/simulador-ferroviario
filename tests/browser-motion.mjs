@@ -24,7 +24,7 @@ async function page(options={}) {
     Lvalue=v;if(v?.map){const old=v.map;v.map=(id,...args)=>{const map=old(id,...args);window.__testMaps[id]=map;return map}}}})});
   return p;
 }
-async function nationalReady(p){await p.waitForFunction(()=>document.querySelector('#nationalWayCount')?.textContent==='45.695',{timeout:60000});}
+async function nationalReady(p){await p.waitForFunction(()=>document.querySelector('#nationalWayCount')?.textContent==='45.695',null,{timeout:60000});}
 const getLat=(p,map,id)=>p.evaluate(({map,id})=>{
   const m=Object.values(window.__testMaps[map]._layers).find(x=>x.options?.title?.includes(id));
   return m ? m.getLatLng().lat : null;
@@ -64,7 +64,7 @@ try {
   await p.locator('#nationalLiveRefresh').click();await p.waitForFunction(()=>document.querySelector('#nationalMotionStatus')?.textContent.includes('contradictorias'));
   assert.equal(await getLat(p,'nationalMap','SINTETICO-AV'),null);
   mode='age';await p.locator('#nationalLiveRefresh').click();await p.waitForFunction(()=>document.querySelector('#nationalAVCount')?.textContent==='1');
-  await p.waitForFunction(()=>document.querySelector('#nationalAVCount')?.textContent==='0',{timeout:12000});
+  await p.waitForFunction(()=>document.querySelector('#nationalAVCount')?.textContent==='0',null,{timeout:12000});
   assert.equal(await p.locator('.national-marker').count(),0,'expired individual position must disappear');
   await p.close();console.log('España: animación, filtro, atribución, conflicto y caducidad OK');
 
@@ -104,7 +104,7 @@ try {
   await isolated.route('**/api/**',route=>route.abort());
   await isolated.setContent(`<iframe title="demo" sandbox="allow-scripts" src="${baseUrl}/simulador.html" style="width:1100px;height:750px"></iframe>`);
   const frame=await (await isolated.$('iframe')).contentFrame();await nationalReady(frame);
-  await frame.waitForFunction(()=>document.querySelector('#nationalLiveBadge')?.textContent==='SIN DATOS',{timeout:30000});
+  await frame.waitForFunction(()=>document.querySelector('#nationalLiveBadge')?.textContent==='SIN DATOS',null,{timeout:30000});
   assert.equal(await frame.locator('#ltvBadge').innerText(),'INSTANTÁNEA');
   await frame.locator('#showSevilla').click();assert.equal(await frame.locator('.train-card').count(),10);await isolated.close();
   console.log('Visor aislado: datos estáticos y simulación OK');
