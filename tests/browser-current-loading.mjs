@@ -11,10 +11,20 @@ const data={schema:1,timezone:'Europe/Madrid',start_date:'2026-10-30',days:4,gen
   stops:[['51003','Sevilla Santa Justa',37.3924,-5.9748],['51100','San Bernardo',37.3775,-5.9795],['51405','Cádiz',36.529,-6.288]],
   trips:[[0,'01307','Media Distancia','1',[0,23*3600+50*60,23*3600+50*60,1,24*3600+5*60,24*3600+7*60,2,24*3600+50*60,24*3600+50*60]]]};
 const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+async function isolate(page) {
+  await page.addInitScript(()=>{const old=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return type==='webgl2'?null:old.call(this,type,...args);};});
+  // Other views may start their own requests; keep those independent of the
+  // controlled Radar fleet used by this test.
+  await page.route('**/api/trenes**',route=>{
+    const scope=new URL(route.request().url()).searchParams.get('ambito')==='espana'?'espana':'sevilla';
+    const empty={status:'fresh',header_timestamp:now/1000,count:0,vehicles:[]};
+    return route.fulfill({json:{scope,generated_at:now/1000,fresh_seconds:90,feeds:{cercanias:empty,larga_distancia:empty}}});
+  });
+}
 try {
   const page=await browser.newPage({viewport:{width:1280,height:800}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
-  await page.addInitScript(()=>{const old=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return type==='webgl2'?null:old.call(this,type,...args);};});
+  await isolate(page);
   await page.clock.setFixedTime(new Date(now));
   let release,entered;const gate=new Promise(resolve=>{release=resolve;}),requested=new Promise(resolve=>{entered=resolve;});
   await page.route('**/data/itinerarios-renfe.json',async route=>{entered();await gate;await route.fulfill({json:data});});
@@ -41,10 +51,10 @@ try {
   // The timetable may finish while the user is in another view. Returning
   // must still join the originally selected train to its planned stops.
   const hidden=await browser.newPage({viewport:{width:1280,height:800}});
+  await isolate(hidden);
   await hidden.clock.setFixedTime(new Date(now));
   let releaseHidden;const hiddenGate=new Promise(resolve=>{releaseHidden=resolve;});
   await hidden.route('**/data/itinerarios-renfe.json',async route=>{await hiddenGate;await route.fulfill({json:data});});
-  await hidden.route('**/api/trenes**',route=>route.fulfill({status:503,body:'offline'}));
   await hidden.route('https://radardetrenes.com/api/v1/fleet?type=all',route=>route.fulfill({json:{updatedAt:new Date(now).toISOString(),count:1,trains:[
     {id:'ld-01307',trainCode:'01307',type:'long_distance',latitude:37.39,longitude:-5.98,timestamp:new Date(now).toISOString(),
       originCode:'51003',destinationCode:'51405',originName:'Sevilla',destinationName:'Cádiz',productName:'MD'}]}}));
@@ -61,6 +71,7 @@ try {
   await hidden.close();console.log('OK · cruce al volver si el GTFS terminó en otra vista');
 
   const missing=await browser.newPage({viewport:{width:1280,height:800}});
+  await isolate(missing);
   await missing.clock.setFixedTime(new Date(now));
   await missing.route('**/data/itinerarios-renfe.json',route=>route.fulfill({status:503,body:'offline'}));
   await missing.route('https://radardetrenes.com/api/v1/fleet?type=all',route=>route.fulfill({json:{updatedAt:new Date(now).toISOString(),count:1,trains:[

@@ -93,9 +93,14 @@ try {
   await page.locator('#timetableCurrentCount').filter({hasText:'2 / 2'}).waitFor({timeout:15000});
   mode='limited';await page.clock.fastForward(31000);
   await page.locator('#timetableCurrentStatus').filter({hasText:'el proveedor limita'}).waitFor({timeout:15000});
-  const limitedCalls=calls;mode='normal';await page.clock.fastForward(60000);
-  assert.equal(calls,limitedCalls,'no debe volver a consultar antes de Retry-After');
-  await page.clock.fastForward(61000);
+  const limitedCalls=calls;mode='normal';
+  // Advance in polling-sized steps and let each asynchronous refresh settle.
+  // A single big fastForward can skip timers scheduled by a prior promise.
+  for(let step=0;step<3;step++) {
+    await page.clock.fastForward(31000);await page.waitForTimeout(50);
+    assert.equal(calls,limitedCalls,'no debe volver a consultar antes de Retry-After');
+  }
+  await page.clock.fastForward(31000);
   await page.locator('#timetableCurrentCount').filter({hasText:'2 / 2'}).waitFor({timeout:15000});
   assert.equal(calls,limitedCalls+1);
   assert.deepEqual(errors,[]);
