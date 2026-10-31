@@ -6,7 +6,7 @@ import { LIVE_POLL_MS, summarizeLive, isExpressService } from './realtime.js?v=1
 import { fetchLivePositions } from './live-source.js?v=12';
 import { createLiveMotionLayer, createLiveTrainIcon, liveIconKind } from './live-motion.js?v=12';
 import { initializeNationalMap } from './national.js?v=12';
-import { initializeTimetableView } from './timetable-ui.js?v=13';
+import { initializeTimetableView } from './timetable-ui.js?v=14';
 import { initializeInfrastructure, infrastructureTrackPopup } from './infrastructure.js?v=12';
 import { initializeTheme } from './theme.js?v=12';
 
@@ -630,13 +630,14 @@ async function initializeBasemap(targetMap=map, status=$('baseStatusText'), retr
   }
 }
 $('baseRetry').addEventListener('click', () => initializeBasemap());
-let localBasemapStarted=false, nationalPromise=null, timetablePromise=null, activeView='sevilla';
+let localBasemapStarted=false, nationalPromise=null, timetablePromise=null, timetableController=null, activeView='sevilla';
 function ensureLocalBasemap() {
   if (!localBasemapStarted) { localBasemapStarted=true; initializeBasemap(); }
 }
 async function changeView(view,updateHash=true) {
   if (!['sevilla','espana','itinerarios'].includes(view)) return;
   activeView=view;
+  if (view!=='itinerarios' && timetableController) timetableController.hide();
   if (view!=='sevilla' && running) { setRunning(false); setNotice('Simulación de Sevilla pausada al cambiar de mapa.'); render(); }
   $('sevillaView').hidden=view!=='sevilla'; $('nationalView').hidden=view!=='espana'; $('timetableView').hidden=view!=='itinerarios';
   for (const [id,current] of [['showSevilla','sevilla'],['showNational','espana'],['showTimetable','itinerarios']]) {
@@ -661,7 +662,8 @@ async function changeView(view,updateHash=true) {
     if (!timetablePromise) timetablePromise=initializeTimetableView(initializeBasemap);
     try {
       const controller=await timetablePromise;
-      if (activeView==='itinerarios') controller.show();
+      timetableController=controller;
+      if (activeView==='itinerarios') controller.show();else controller.hide();
     } catch (error) {
       $('timetableDatasetStatus').textContent=`No se pudo iniciar la línea de tiempo: ${error.message}.`;
       console.error(error);

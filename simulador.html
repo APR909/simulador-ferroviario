@@ -997,7 +997,9 @@ html[data-theme="dark"] .live-popup .live-motion-caution,html[data-theme="dark"]
 .timetable-board-button{flex:none;max-width:180px;white-space:normal;text-align:center;border:1px solid #badacc;border-radius:5px;background:#eaf7ef;color:#286e58;font-size:10px;font-weight:800;padding:9px 11px}
 .timetable-board-button:hover:not(:disabled){background:#d5efdf}.timetable-detail-caution{font-size:9px;line-height:1.45;color:#8b8069;margin:2px 0 0}.timetable-board-status{font-size:9px;line-height:1.4;color:#7a8f80;margin:0}
 .timetable-table-wrap{min-height:48px;overflow:auto;border:1px solid #edf1ed;border-radius:4px}.timetable-table{width:100%;border-collapse:collapse;text-align:left;font-size:10px;color:#526b5b}
-.timetable-table th{position:sticky;top:0;z-index:1;padding:7px 9px;background:#f5f8f3;color:#889b8b;font-size:8px;letter-spacing:.06em}.timetable-table td{padding:6px 9px;border-top:1px solid #edf2ed;vertical-align:top;font-variant-numeric:tabular-nums}.timetable-table td b{display:block;font-size:10px;font-weight:750;white-space:nowrap}.timetable-table td small{display:block;margin-top:2px;color:#99a99c;font-size:9px}.timetable-table td small.estimada{color:#b27825;font-weight:800}.timetable-table td small.real{color:#24896d;font-weight:800}.timetable-stop-button{padding:0;border:0;background:none;color:#47715e;font-size:10px;font-weight:750;text-align:left;text-decoration:underline;text-decoration-color:#c5d9c9;text-underline-offset:2px}
+.timetable-table th{position:sticky;top:0;z-index:1;padding:7px 9px;background:#f5f8f3;color:#889b8b;font-size:8px;letter-spacing:.06em}.timetable-table td{padding:6px 9px;border-top:1px solid #edf2ed;vertical-align:top;font-variant-numeric:tabular-nums}.timetable-table td b{display:block;font-size:10px;font-weight:750;white-space:nowrap}.timetable-table td small{display:block;margin-top:2px;color:#99a99c;font-size:9px}.timetable-table td small.estimada{color:#a86616;font-weight:800}.timetable-table td small.real{color:#16795d;font-weight:800}
+.timetable-table td small.programada{color:#63796a}.timetable-time-live{margin-top:5px;padding:4px 6px;border-left:2px solid #ac792e;border-radius:2px;background:#fff7e9}.timetable-time-live.real{border-color:#249c7a;background:#eaf8ef}.timetable-time-live b{color:#72501f}.timetable-time-live.real b{color:#1d7359}.timetable-table td .timetable-no-live{margin-top:6px;color:#667d6e;line-height:1.3}
+.timetable-stop-button{padding:0;border:0;background:none;color:#47715e;font-size:10px;font-weight:750;text-align:left;text-decoration:underline;text-decoration-color:#c5d9c9;text-underline-offset:2px}
 html[data-theme="dark"] .timetable-intro p b{color:#c0d5c5}
 html[data-theme="dark"] .timetable-time-row output{color:#d9f5e6}
 html[data-theme="dark"] .timetable-quick button,html[data-theme="dark"] .timetable-more{background:#223c31;border-color:#3b5e4b;color:#c8e5d3}
@@ -1020,6 +1022,8 @@ html[data-theme="dark"] .timetable-detail-caution{color:#deccaa}
 html[data-theme="dark"] .timetable-table-wrap{border-color:#3b5243}html[data-theme="dark"] .timetable-table{color:#d0e6d8}html[data-theme="dark"] .timetable-table th{background:#243c30;color:#b7d3c1}
 html[data-theme="dark"] .timetable-table td{border-color:#364e40}html[data-theme="dark"] .timetable-table td small{color:#afc7b7}
 html[data-theme="dark"] .timetable-table td small.estimada{color:#ffcd84}html[data-theme="dark"] .timetable-table td small.real{color:#9becbf}
+html[data-theme="dark"] .timetable-time-live{background:#413522;border-color:#d5a35a}html[data-theme="dark"] .timetable-time-live b{color:#ffe0aa}
+html[data-theme="dark"] .timetable-time-live.real{background:#204636;border-color:#6ed4ac}html[data-theme="dark"] .timetable-time-live.real b{color:#c3f9d9}
 html[data-theme="dark"] .timetable-stop-button{color:#cae9d3;text-decoration-color:#6b9e7b}
 @media(max-width:900px){.timetable-map-label{font-size:9px}.timetable-detail{max-height:48%}}
 @media(max-width:650px){
@@ -1058,7 +1062,7 @@ html[data-theme="dark"] .timetable-board-button:hover:not(:disabled){background:
       <svg class="theme-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.2" stroke="currentColor" stroke-width="1.6"/><path d="M10 1.8v2M10 16.2v2M1.8 10h2m12.4 0h2M4.2 4.2l1.4 1.4m8.8 8.8 1.4 1.4m0-11.6-1.4 1.4m-8.8 8.8-1.4 1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       <span id="themeLabel">Oscuro</span>
     </button>
-    <div class="topbar-right"><span class="demo-badge"><span class="status-dot"></span> VÍAS REALES · SIMULACIÓN DIDÁCTICA</span><span class="version">v 0.10</span></div>
+    <div class="topbar-right"><span class="demo-badge"><span class="status-dot"></span> VÍAS REALES · SIMULACIÓN DIDÁCTICA</span><span class="version">v 0.11</span></div>
   </header>
 
   <div class="app-layout view" id="sevillaView">
@@ -1327,9 +1331,9 @@ html[data-theme="dark"] .timetable-board-button:hover:not(:disabled){background:
         <div class="timetable-base base-status" aria-live="polite"><span id="timetableBaseStatus">Conectando mapa de fondo…</span><button type="button" id="timetableBaseRetry" hidden>Reintentar</button></div>
       </div>
       <section class="timetable-detail" aria-labelledby="timetableJourneyHeading">
-        <div class="timetable-detail-heading"><div><span class="field-label">DETALLE DEL ITINERARIO</span><h3 id="timetableJourneyHeading">Selecciona un viaje</h3><p id="timetableJourneyMeta">Se mostrarán las paradas y sus horas publicadas.</p></div><button type="button" id="timetableBoardRefresh" class="timetable-board-button" disabled>Consultar horas disponibles ↻</button></div>
-        <p class="timetable-detail-caution">Horas <b>programadas</b> por defecto. Si un tablón actual identifica la misma circulación, se muestran sus horas <b>estimadas</b> o <b>reales</b>. No se recuperan estimaciones o llegadas históricas que la fuente no publique.</p>
-        <p id="timetableBoardStatus" class="timetable-board-status" role="status">No hay un viaje seleccionado.</p>
+        <div class="timetable-detail-heading"><div><span class="field-label">DETALLE DEL ITINERARIO · ACTUALIZACIÓN AUTOMÁTICA</span><h3 id="timetableJourneyHeading">Selecciona un viaje</h3><p id="timetableJourneyMeta">Se mostrarán las paradas y sus horas publicadas.</p></div><button type="button" id="timetableBoardRefresh" class="timetable-board-button" disabled>Actualizar ahora ↻</button></div>
+        <p class="timetable-detail-caution">Se consulta el viaje seleccionado cada ~45 s mientras esta vista está abierta. Se muestran la hora <b>programada</b> y, si hay coincidencia, la <b>estimada</b> o <b>real</b> del tablón actual. No se guarda histórico.</p>
+        <p id="timetableBoardStatus" class="timetable-board-status" role="status">Selecciona un viaje para activar la consulta automática.</p>
         <div class="timetable-table-wrap"><table class="timetable-table"><thead><tr><th scope="col">PARADA</th><th scope="col">LLEGADA</th><th scope="col">SALIDA</th></tr></thead><tbody id="timetableStops"><tr><td colspan="3">Selecciona un viaje en la lista.</td></tr></tbody></table></div>
       </section>
     </main>
@@ -3217,6 +3221,9 @@ async function initializeNationalMap(setupBasemap) {
 const TIMETABLE_URL = './data/itinerarios-renfe.json';
 const TIMETABLE_ZONE = 'Europe/Madrid';
 const TIMETABLE_WINDOW_MS = 24 * 60 * 60 * 1000;
+const TIMETABLE_BOARD_REFRESH_MS = 45 * 1000;
+const TIMETABLE_BOARD_MAX_AGE_MS = 120 * 1000;
+const timetableBoardFutureToleranceMs = 30 * 1000;
 const timetableDayMs = 86400000;
 const timetableMadridParts = new Intl.DateTimeFormat('en-CA', {
   timeZone:TIMETABLE_ZONE, year:'numeric', month:'2-digit', day:'2-digit',
@@ -3332,12 +3339,20 @@ function timetableCanonicalCode(value) {
   const raw=value.trim();
   return /^\d+$/.test(raw) ? raw.replace(/^0+(?=\d)/,'') : raw;
 }
+/** A recent fetch alone is not enough: check the source's own timestamp. */
+function isTimetableBoardFresh(board,now=Date.now()) {
+  return Number.isFinite(now) && Number.isFinite(board?.updatedAt) &&
+    now-board.updatedAt<=TIMETABLE_BOARD_MAX_AGE_MS && now-board.updatedAt>=-timetableBoardFutureToleranceMs;
+}
+function isTimetableBoardValueFresh(value,now=Date.now()) {
+  return Number.isFinite(now) && Number.isFinite(value?.updatedAt) && Number.isFinite(value?.validUntil) &&
+    now>=value.updatedAt-timetableBoardFutureToleranceMs && now<=value.validUntil;
+}
 /** Match a board row only with the same train, station, route endpoints and
  * planned event time. `plannedTime` is scheduled; the displayed estimate/real
  * time is explicitly calculated as plannedTime + the published delay. */
 function matchBoardEvent(board, journey, stopIndex, kind, now=Date.now()) {
-  if(!board || !journey || !['arrivals','departures'].includes(kind) || !Number.isFinite(now) ||
-     !Number.isFinite(board.updatedAt) || now-board.updatedAt>120000 || now-board.updatedAt< -30000 || !Array.isArray(board[kind]))return null;
+  if(!journey || !['arrivals','departures'].includes(kind) || !isTimetableBoardFresh(board,now) || !Array.isArray(board[kind]))return null;
   const visits=journey.pattern.visits, stop=visits[stopIndex];
   if(!stop)return null;
   const expected=journey.serviceStart+(kind==='arrivals'?stop.arrival:stop.departure)*1000;
@@ -3353,38 +3368,60 @@ function matchBoardEvent(board, journey, stopIndex, kind, now=Date.now()) {
     if(!row.originCode || !row.destinationCode || timetableCanonicalCode(row.originCode)!==firstCode || timetableCanonicalCode(row.destinationCode)!==lastCode)continue;
     if((journey.pattern.feed===0 && row.trafficType==='CERCANIAS') || (journey.pattern.feed===1 && row.trafficType==='AVLDMD'))continue;
     if(/CANCEL|SUPRIM|ANUL/i.test(String(row.circulationState||'')+' '+String(row.announceState||'')))continue;
-    if(Number.isFinite(row.timestamp) && (now-row.timestamp>120000 || now-row.timestamp< -30000))continue;
+    if(row.timestamp!=null && !Number.isFinite(row.timestamp))continue;
+    if(Number.isFinite(row.timestamp) && (now-row.timestamp>TIMETABLE_BOARD_MAX_AGE_MS || now-row.timestamp< -timetableBoardFutureToleranceMs))continue;
     const time=row.plannedTime+row.delayMinutes*60000;
-    if(row.timeType==='REAL' && time>now+30000)continue;
-    matches.push({kind:row.timeType==='REAL'?'real':'estimada',time,delayMinutes:row.delayMinutes,updatedAt:board.updatedAt});
+    if(row.timeType==='REAL' && time>now+timetableBoardFutureToleranceMs)continue;
+    const validUntil=Math.min(board.updatedAt,Number.isFinite(row.timestamp)?row.timestamp:board.updatedAt)+TIMETABLE_BOARD_MAX_AGE_MS;
+    matches.push({kind:row.timeType==='REAL'?'real':'estimada',time,delayMinutes:row.delayMinutes,updatedAt:board.updatedAt,validUntil});
   }
   // Conflicting matching rows are ambiguous and must not be reported as facts.
   if(!matches.length || matches.some(m=>m.time!==matches[0].time || m.kind!==matches[0].kind))return null;
-  return matches[0];
+  return {...matches[0],validUntil:Math.min(...matches.map(match=>match.validUntil))};
 }
 
 function createBoardSource({fetchImpl=(...args)=>globalThis.fetch(...args),clock=()=>Date.now()}={}) {
   const cache=new Map();
-  async function get(code) {
+  async function get(code,{signal}={}) {
     if(typeof code!=='string' || !/^\d{1,8}$/.test(code))throw new Error('Código de estación no válido.');
-    const key=timetableCanonicalCode(code),now=clock(),old=cache.get(key);
-    if(old && now-old.at>=0 && now-old.at<30000)return old.promise;
-    const promise=(async()=>{
+    if(signal?.aborted)throw new DOMException('Consulta cancelada.','AbortError');
+    const key=timetableCanonicalCode(code),now=clock();
+    for(const [cachedKey,item] of cache)if(!item.pending && (now-item.at<0 || now-item.at>=30000))cache.delete(cachedKey);
+    const old=cache.get(key);
+    // Never attach a new selection to a request canceled by an older selection.
+    if(old && now-old.at>=0 && now-old.at<30000 && !(old.pending && old.signal?.aborted))return old.promise;
+    // Keep long browsing sessions bounded without evicting requests in flight.
+    for(const [cachedKey,item] of cache)if(cache.size>=48 && !item.pending)cache.delete(cachedKey);
+    const entry={at:now,signal,pending:true,promise:null};
+    entry.promise=(async()=>{
       const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
+      const cancel=()=>controller.abort();
+      signal?.addEventListener('abort',cancel,{once:true});
+      if(signal?.aborted)controller.abort();
       try {
         const response=await fetchImpl(`https://radardetrenes.com/api/v1/stations/${encodeURIComponent(key)}/board-renfe`,
           {method:'GET',credentials:'omit',signal:controller.signal});
-        if(!response.ok)throw new Error(`Tablón HTTP ${response.status}`);
+        if(!response.ok) {
+          const error=new Error(`Tablón HTTP ${response.status}`);error.status=response.status;
+          if(response.status===429) {
+            const raw=response.headers?.get?.('retry-after'),seconds=raw && /^\d+$/.test(raw.trim()) ? Number(raw) : NaN;
+            const delay=Number.isFinite(seconds) ? seconds*1000 : raw ? Date.parse(raw)-clock() : NaN;
+            error.retryAfterMs=Number.isFinite(delay)&&delay>0 ? delay : 120000;
+          }
+          throw error;
+        }
         const length=Number(response.headers?.get?.('content-length'));
         if(Number.isFinite(length)&&length>1000000)throw new Error('Tablón demasiado grande.');
         const text=await response.text();if(text.length>1000000)throw new Error('Tablón demasiado grande.');
         const board=JSON.parse(text);
         if(!Number.isFinite(board?.updatedAt)||!Array.isArray(board.arrivals)||!Array.isArray(board.departures))throw new Error('Tablón no válido.');
         return board;
-      } finally {clearTimeout(timeout);}
+      } finally {clearTimeout(timeout);signal?.removeEventListener('abort',cancel);}
     })();
-    cache.set(key,{at:now,promise});
-    return promise;
+    cache.set(key,entry);
+    try {return await entry.promise;}
+    catch(error){if(cache.get(key)===entry)cache.delete(key);throw error;}
+    finally{entry.pending=false;}
   }
   return {get};
 }
@@ -3392,6 +3429,15 @@ function createBoardSource({fetchImpl=(...args)=>globalThis.fetch(...args),clock
 // --- timetable-ui.js ---
 
 const timetableElement = id => document.getElementById(id);
+const timetableLiveClock = new Intl.DateTimeFormat('es-ES',{
+  timeZone:'Europe/Madrid',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23',
+});
+function timetableBoardCode(value) {
+  return typeof value==='string' && /^\d{1,8}$/.test(value) ? value.replace(/^0+(?=\d)/,'') : '';
+}
+function timetableDelayLabel(minutes) {
+  return minutes===0 ? 'sin demora publicada' : `${minutes>0?'+':''}${minutes} min`;
+}
 function timetableNode(tag,text,className='') {
   const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(className)node.className=className;return node;
 }
@@ -3414,8 +3460,8 @@ async function initializeTimetableView(setupBasemap) {
   L.control.zoom({position:'topright'}).addTo(map);
   map.attributionControl.addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>');
   const drawing=L.layerGroup().addTo(map),boardSource=createBoardSource();
-  const state={index:null,windowEnd:Date.now(),results:[],limit:12,selected:null,boardValues:new Map(),
-    selectionVersion:0,boardBusy:false,markers:new Map(),statusBase:''};
+  const state={index:null,windowEnd:Date.now(),results:[],limit:12,selected:null,boardValues:new Map(),stationStates:new Map(),
+    selectionVersion:0,active:false,poll:null,pollTimer:null,expiryTimer:null,lastCycle:null,firstCycle:false,retryAfter:0,markers:new Map(),statusBase:''};
   setupBasemap(map,timetableElement('timetableBaseStatus'),timetableElement('timetableBaseRetry'));
   timetableElement('timetableBaseRetry').addEventListener('click',()=>setupBasemap(map,timetableElement('timetableBaseStatus'),timetableElement('timetableBaseRetry')));
 
@@ -3451,16 +3497,16 @@ async function initializeTimetableView(setupBasemap) {
     timetableElement('timetableMore').textContent=`Mostrar más (${Math.max(0,state.results.length-state.limit)} restantes)`;
   }
   function resetSelection() {
-    state.selectionVersion++;state.selected=null;state.boardValues.clear();state.boardBusy=false;state.markers.clear();drawing.clearLayers();
+    state.selectionVersion++;stopAuto();state.selected=null;state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;state.firstCycle=false;state.markers.clear();drawing.clearLayers();
     timetableElement('timetableJourneyHeading').textContent='Selecciona un viaje';
     timetableElement('timetableJourneyMeta').textContent='Se mostrarán las paradas y sus horas publicadas.';
     timetableElement('timetableMapNotice').textContent='Selecciona un viaje para ver sus estaciones.';
-    timetableElement('timetableBoardStatus').textContent='No hay un viaje seleccionado.';
+    timetableElement('timetableBoardStatus').textContent='Selecciona un viaje para activar la consulta automática.';
     timetableElement('timetableBoardRefresh').disabled=true;
     const cell=timetableNode('td','Selecciona un viaje en la lista.');cell.colSpan=3;
     const row=timetableNode('tr');row.append(cell);timetableElement('timetableStops').replaceChildren(row);
   }
-  function updateResults() {
+  function updateResults({preserveSelection=false}={}) {
     const instant=updateClock();
     if(!state.index)return;
     const av=timetableElement('timetableAV').checked,commuter=timetableElement('timetableCommuter').checked;
@@ -3476,7 +3522,13 @@ async function initializeTimetableView(setupBasemap) {
       (archived.length ? `Horario anterior conservado de una instantánea previa para ${archived.map(s=>s.label).join(' y ')}; puede no incluir cambios posteriores. ` : '');
     status.textContent=notices+state.statusBase;
     timetableElement('timetableCount').textContent=missing.length===enabled.length && enabled.length && !state.results.length ? '—' : state.results.length.toLocaleString('es-ES')+(missing.length?'*':'');
-    if(state.selected && !state.results.some(j=>j.key===state.selected.key))resetSelection();
+    const selectedIsListed=state.selected && state.results.some(j=>j.key===state.selected.key);
+    if(state.selected && !selectedIsListed && !preserveSelection)resetSelection();
+    else if(state.selected) {
+      const journey=state.selected;
+      timetableElement('timetableJourneyMeta').textContent=`${currentDescription(journey)} · día de servicio ${timetableDateLabel(journey.serviceDate)} · según horario`+
+        (selectedIsListed?'':' · viaje conservado para seguimiento, fuera del instante programado');
+    }
     renderList();
   }
   function drawJourney(journey) {
@@ -3498,15 +3550,33 @@ async function initializeTimetableView(setupBasemap) {
   function timetableTimeCell(journey,index,kind) {
     const cell=timetableNode('td'),last=journey.pattern.visits.length-1;
     if((kind==='arrivals' && index===0)||(kind==='departures' && index===last)) {cell.textContent='—';return cell;}
-    const actual=state.boardValues.get(`${index}:${kind}`);
-    const timestamp=actual?.time ?? timetableStopEvent(journey,index,kind);
-    cell.append(timetableNode('b',formatTimetableTime(timestamp)),timetableNode('small',actual?.kind || 'programada',actual?.kind || 'programada'));
-    if(actual)cell.title=`Hora ${actual.kind}: programada más ${actual.delayMinutes} min de demora publicada. Tablón consultado ${formatTimetableTime(actual.updatedAt)}.`;
+    const planned=timetableNode('div',undefined,'timetable-time-planned');
+    planned.append(timetableNode('b',formatTimetableTime(timetableStopEvent(journey,index,kind))),timetableNode('small','programada','programada'));
+    cell.append(planned);
+    const value=state.boardValues.get(`${index}:${kind}`),actual=isTimetableBoardValueFresh(value) ? value : null;
+    if(actual) {
+      const live=timetableNode('div',undefined,`timetable-time-live ${actual.kind}`);
+      live.append(timetableNode('b',formatTimetableTime(actual.time)),timetableNode('small',`${actual.kind} · ${timetableDelayLabel(actual.delayMinutes)}`,actual.kind));
+      live.title=`Hora ${actual.kind}: programada más ${actual.delayMinutes} min de demora publicada. Última actualización del tablón: ${formatTimetableTime(actual.updatedAt)}.`;
+      cell.append(live);
+    } else {
+      const code=timetableBoardCode(journey.pattern.visits[index].station.code),status=state.stationStates.get(code);
+      let message=state.poll ? 'consultando…' : 'sin dato actual';
+      if(!code)message='sin código de tablón';
+      else if(status==='omitted')message='parada no consultada';
+      else if(status==='error')message='tablón no disponible';
+      else if(status==='rate')message='límite de consultas';
+      else if(status==='stale')message='tablón desactualizado';
+      else if(status==='ok')message='sin coincidencia actual';
+      cell.append(timetableNode('small',message,'timetable-no-live'));
+    }
     return cell;
   }
   function renderStops() {
     const journey=state.selected;if(!journey)return;
-    const body=timetableElement('timetableStops');body.replaceChildren();
+    const body=timetableElement('timetableStops'),wrap=body.closest('.timetable-table-wrap'),scrollTop=wrap?.scrollTop || 0;
+    const focused=document.activeElement?.closest?.('tr[id^="timetable-stop-"]')?.id;
+    body.replaceChildren();
     journey.pattern.visits.forEach((visit,index)=>{
       const row=timetableNode('tr');row.id=`timetable-stop-${index}`;
       const stationCell=timetableNode('td'),button=timetableNode('button',visit.station.name,'timetable-stop-button');button.type='button';
@@ -3518,70 +3588,144 @@ async function initializeTimetableView(setupBasemap) {
       stationCell.append(button);row.append(stationCell,timetableTimeCell(journey,index,'arrivals'),timetableTimeCell(journey,index,'departures'));
       body.append(row);
     });
+    if(focused)timetableElement(focused)?.querySelector('button')?.focus({preventScroll:true});
+    if(wrap)wrap.scrollTop=scrollTop;
+  }
+  function canPoll() {
+    return Boolean(state.selected && state.active && !document.hidden && !timetableElement('timetableView').hidden);
+  }
+  function stopAuto() {
+    clearTimeout(state.pollTimer);state.pollTimer=null;
+    clearTimeout(state.expiryTimer);state.expiryTimer=null;
+    const poll=state.poll;state.poll=null;poll?.controller.abort();
+  }
+  function updateBoardStatus() {
+    const button=timetableElement('timetableBoardRefresh'),status=timetableElement('timetableBoardStatus'),now=Date.now();
+    button.disabled=!canPoll() || Boolean(state.poll) || now<state.retryAfter;
+    if(!state.selected){status.textContent='Selecciona un viaje para activar la consulta automática.';return;}
+    if(!canPoll()){status.textContent='Actualización automática pausada mientras esta vista o pestaña está oculta.';return;}
+    if(state.poll){status.textContent='AUTO · consultando los tablones actuales…';return;}
+    if(now<state.retryAfter){status.textContent='AUTO · límite de consultas del proveedor; se respetará el tiempo de espera antes de reintentar.';return;}
+    if(!state.lastCycle){status.textContent='AUTO · iniciando consulta de tablones actuales…';return;}
+    const {fresh,stale,failed,omitted,at}=state.lastCycle;
+    const parts=['AUTO · cada ~45 s',`${fresh} tablón(es) recientes`,`${state.boardValues.size} hora(s) coincidentes`,
+      `última comprobación ${timetableLiveClock.format(new Date(at))} · Madrid`];
+    if(stale)parts.push(`${stale} tablón(es) desactualizados`);
+    if(failed)parts.push(`${failed} tablón(es) no disponibles`);
+    if(omitted)parts.push(`límite de 12 · ${omitted} paradas sin consultar`);
+    status.textContent=parts.join(' · ')+'.';
+  }
+  function scheduleNextPoll() {
+    clearTimeout(state.pollTimer);state.pollTimer=null;
+    if(!canPoll())return;
+    const delay=Math.max(TIMETABLE_BOARD_REFRESH_MS,state.retryAfter-Date.now());
+    // Browsers cap setTimeout at a signed 32-bit millisecond interval.
+    state.pollTimer=setTimeout(refreshBoards,Math.min(delay,2147483000));
+  }
+  function scheduleExpiry() {
+    clearTimeout(state.expiryTimer);state.expiryTimer=null;
+    if(!canPoll() || !state.boardValues.size)return;
+    const expiry=Math.min(...[...state.boardValues.values()].map(value=>value.validUntil));
+    state.expiryTimer=setTimeout(()=>{
+      for(const [key,value] of state.boardValues)if(!isTimetableBoardValueFresh(value))state.boardValues.delete(key);
+      renderStops();updateBoardStatus();scheduleExpiry();
+    },Math.max(1,Math.min(2147483000,expiry-Date.now()+1)));
+  }
+  function pauseAuto() {
+    stopAuto();state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;
+    renderStops();updateBoardStatus();
   }
   function selectJourney(journey) {
-    state.selectionVersion++;state.selected=journey;state.boardValues.clear();state.boardBusy=false;
+    state.selectionVersion++;stopAuto();state.selected=journey;state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;state.firstCycle=true;
     timetableElement('timetableJourneyHeading').textContent=timetablePatternName(journey);
     timetableElement('timetableJourneyMeta').textContent=`${currentDescription(journey)} · día de servicio ${timetableDateLabel(journey.serviceDate)} · según horario`;
-    timetableElement('timetableBoardRefresh').disabled=false;
-    timetableElement('timetableBoardStatus').textContent='Pulsa «Consultar horas disponibles» para buscar estimaciones o horas reales en los tablones actuales.';
-    drawJourney(journey);renderStops();renderList();
+    drawJourney(journey);renderStops();renderList();updateBoardStatus();
+    if(canPoll())refreshBoards();
     if(window.matchMedia?.('(max-width:650px)').matches)timetableElement('timetableJourneyHeading').scrollIntoView({behavior:'smooth',block:'center'});
   }
   async function refreshBoards() {
-    const journey=state.selected;if(!journey||state.boardBusy)return;
-    state.boardBusy=true;const version=state.selectionVersion,visits=journey.pattern.visits,now=Date.now();
-    state.boardValues.clear();renderStops();
-    timetableElement('timetableBoardRefresh').disabled=true;
+    clearTimeout(state.pollTimer);state.pollTimer=null;
+    if(!canPoll() || state.poll)return;
+    if(Date.now()<state.retryAfter){updateBoardStatus();scheduleNextPoll();return;}
+    const journey=state.selected,visits=journey.pattern.visits,now=Date.now();
+    const token={version:state.selectionVersion,controller:new AbortController()};state.poll=token;
     // No bulk scrape: at most 12 unique numeric station codes, with no more
     // than three concurrent requests and a 30 s per-station cache.
-    const candidates=visits.map((visit,index)=>({index,code:visit.station.code,
+    const candidates=visits.map((visit,index)=>({index,code:timetableBoardCode(visit.station.code),
       distance:Math.abs(timetableStopEvent(journey,index,'arrivals')-now)}))
-      .filter(item=>/^\d{1,8}$/.test(item.code))
+      .filter(item=>item.code)
       .sort((a,b)=>a.distance-b.distance);
-    const byCode=new Map();
-    for(const item of candidates)if(!byCode.has(item.code.replace(/^0+(?=\d)/,'')))byCode.set(item.code.replace(/^0+(?=\d)/,''),item);
-    const codes=[...byCode.keys()].slice(0,12),boards=new Map();let cursor=0,failed=0;
-    timetableElement('timetableBoardStatus').textContent=`Consultando hasta ${codes.length} tablones actuales…`;
+    const byCode=new Map();for(const item of candidates)if(!byCode.has(item.code))byCode.set(item.code,item);
+    const codes=[...byCode.keys()].slice(0,12),boards=new Map(),failed=new Set();let cursor=0,rateLimited=false;
+    renderStops();updateBoardStatus();
     async function worker() {
-      while(cursor<codes.length) {
+      while(cursor<codes.length && !token.controller.signal.aborted && !rateLimited) {
         const code=codes[cursor++];
-        try{boards.set(code,await boardSource.get(code));}catch(_){failed++;}
+        try {
+          const board=await boardSource.get(code,{signal:token.controller.signal});
+          if(!token.controller.signal.aborted)boards.set(code,board);
+        } catch(error) {
+          if(token.controller.signal.aborted || state.poll!==token)return;
+          failed.add(code);
+          if(error?.status===429){rateLimited=true;state.retryAfter=Math.max(state.retryAfter,Date.now()+(error.retryAfterMs||120000));}
+        }
       }
     }
     await Promise.all(Array.from({length:Math.min(3,codes.length)},worker));
-    if(version!==state.selectionVersion)return;
-    let matched=0;
+    if(state.poll!==token || token.version!==state.selectionVersion || !canPoll())return;
+    state.poll=null;
+    const checkedAt=Date.now(),stationStates=new Map(),values=new Map();let fresh=0,stale=0;
+    for(const code of byCode.keys())stationStates.set(code,'omitted');
+    for(const code of codes)stationStates.set(code,rateLimited?'rate':'error');
+    for(const [code,board] of boards) {
+      if(isTimetableBoardFresh(board,checkedAt)){stationStates.set(code,'ok');fresh++;}
+      else{stationStates.set(code,'stale');stale++;}
+    }
+    for(const code of failed)stationStates.set(code,rateLimited?'rate':'error');
     for(let index=0;index<visits.length;index++) {
-      const code=visits[index].station.code.replace(/^0+(?=\d)/,''),board=boards.get(code);
-      if(!board)continue;
+      const code=timetableBoardCode(visits[index].station.code),board=boards.get(code);
+      if(!board || stationStates.get(code)!=='ok')continue;
       for(const kind of ['arrivals','departures']) {
         if((kind==='arrivals'&&index===0)||(kind==='departures'&&index===visits.length-1))continue;
-        const event=matchBoardEvent(board,journey,index,kind,Date.now());
-        if(event){state.boardValues.set(`${index}:${kind}`,event);matched++;}
+        const event=matchBoardEvent(board,journey,index,kind,checkedAt);
+        if(event)values.set(`${index}:${kind}`,event);
       }
     }
-    state.boardBusy=false;timetableElement('timetableBoardRefresh').disabled=false;renderStops();
-    const remaining=Math.max(0,byCode.size-codes.length);
-    timetableElement('timetableBoardStatus').textContent=boards.size
-      ? `${boards.size} tablón(es) consultados · ${matched} hora(s) estimadas o reales coincidentes${remaining ? ` · límite de 12; ${remaining} paradas sin consultar` : ''}. Las demás son programadas.`
-      : `No se pudieron consultar los tablones${failed ? ' · revisa la conexión' : ''}. Se mantienen las horas programadas.`;
+    state.stationStates=stationStates;state.boardValues=values;
+    state.lastCycle={fresh,stale,failed:failed.size,omitted:Math.max(0,byCode.size-codes.length),at:checkedAt};
+    renderStops();
+    // On the first cycle only, reveal the live event nearest the present.
+    // Never move the user's table on subsequent automatic updates.
+    if(state.firstCycle && values.size) {
+      const [key]=[...values.entries()].sort((a,b)=>Math.abs(a[1].time-checkedAt)-Math.abs(b[1].time-checkedAt))[0];
+      const row=timetableElement(`timetable-stop-${key.split(':')[0]}`),wrap=row?.closest('.timetable-table-wrap');
+      if(row && wrap)wrap.scrollTop+=row.getBoundingClientRect().top-wrap.getBoundingClientRect().top-wrap.clientHeight/3;
+    }
+    state.firstCycle=false;
+    updateBoardStatus();scheduleExpiry();scheduleNextPoll();
   }
   timetableElement('timetableRange').addEventListener('input',()=>{state.limit=12;updateResults();});
   timetableElement('timetableSearch').addEventListener('input',()=>{state.limit=12;updateResults();});
   for(const id of ['timetableAV','timetableCommuter'])timetableElement(id).addEventListener('change',()=>{state.limit=12;updateResults();});
   timetableElement('timetableMore').addEventListener('click',()=>{state.limit+=12;renderList();});
   timetableElement('timetableBoardRefresh').addEventListener('click',refreshBoards);
+  function advanceWindow() {
+    const range=timetableElement('timetableRange'),wasNow=Number(range.value)>=1439,previous=state.windowEnd-TIMETABLE_WINDOW_MS+Number(range.value)*60000;
+    state.windowEnd=Date.now();
+    range.value=String(wasNow?1440:Math.max(0,Math.min(1440,Math.round((previous-(state.windowEnd-TIMETABLE_WINDOW_MS))/60000))));
+    updateResults({preserveSelection:true});
+  }
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden)pauseAuto();
+    else if(state.active){advanceWindow();if(state.selected)refreshBoards();}
+  });
   for(const button of document.querySelectorAll('[data-timetable-offset]'))button.addEventListener('click',()=>{
     state.windowEnd=Date.now();timetableElement('timetableRange').value=String(1440-Number(button.dataset.timetableOffset)*60);
     state.limit=12;updateResults();
   });
   setInterval(()=>{
     if(document.hidden || timetableElement('timetableView').hidden)return;
-    const range=timetableElement('timetableRange'),wasNow=Number(range.value)>=1439,previous=state.windowEnd-TIMETABLE_WINDOW_MS+Number(range.value)*60000;
-    state.windowEnd=Date.now();
-    range.value=String(wasNow?1440:Math.max(0,Math.min(1440,Math.round((previous-(state.windowEnd-TIMETABLE_WINDOW_MS))/60000))));
-    updateResults();
+    advanceWindow();
   },60000);
   updateClock();
   try {
@@ -3600,7 +3744,16 @@ async function initializeTimetableView(setupBasemap) {
     timetableElement('timetableResults').replaceChildren(timetableNode('p','No hay una instantánea de horarios disponible.','timetable-empty'));
     console.error(error);
   }
-  return {show(){requestAnimationFrame(()=>map.invalidateSize({animate:false}));updateResults();},map};
+  return {
+    show(){
+      state.active=true;
+      requestAnimationFrame(()=>map.invalidateSize({animate:false}));
+      advanceWindow();
+      if(state.selected && !document.hidden)refreshBoards();else updateBoardStatus();
+    },
+    hide(){state.active=false;pauseAuto();},
+    map,
+  };
 }
 
 // --- app.js ---
@@ -4235,13 +4388,14 @@ async function initializeBasemap(targetMap=map, status=$('baseStatusText'), retr
   }
 }
 $('baseRetry').addEventListener('click', () => initializeBasemap());
-let localBasemapStarted=false, nationalPromise=null, timetablePromise=null, activeView='sevilla';
+let localBasemapStarted=false, nationalPromise=null, timetablePromise=null, timetableController=null, activeView='sevilla';
 function ensureLocalBasemap() {
   if (!localBasemapStarted) { localBasemapStarted=true; initializeBasemap(); }
 }
 async function changeView(view,updateHash=true) {
   if (!['sevilla','espana','itinerarios'].includes(view)) return;
   activeView=view;
+  if (view!=='itinerarios' && timetableController) timetableController.hide();
   if (view!=='sevilla' && running) { setRunning(false); setNotice('Simulación de Sevilla pausada al cambiar de mapa.'); render(); }
   $('sevillaView').hidden=view!=='sevilla'; $('nationalView').hidden=view!=='espana'; $('timetableView').hidden=view!=='itinerarios';
   for (const [id,current] of [['showSevilla','sevilla'],['showNational','espana'],['showTimetable','itinerarios']]) {
@@ -4266,7 +4420,8 @@ async function changeView(view,updateHash=true) {
     if (!timetablePromise) timetablePromise=initializeTimetableView(initializeBasemap);
     try {
       const controller=await timetablePromise;
-      if (activeView==='itinerarios') controller.show();
+      timetableController=controller;
+      if (activeView==='itinerarios') controller.show();else controller.hide();
     } catch (error) {
       $('timetableDatasetStatus').textContent=`No se pudo iniciar la línea de tiempo: ${error.message}.`;
       console.error(error);

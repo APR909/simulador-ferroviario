@@ -3,6 +3,9 @@
 export const TIMETABLE_URL = './data/itinerarios-renfe.json';
 export const TIMETABLE_ZONE = 'Europe/Madrid';
 export const TIMETABLE_WINDOW_MS = 24 * 60 * 60 * 1000;
+export const TIMETABLE_BOARD_REFRESH_MS = 45 * 1000;
+export const TIMETABLE_BOARD_MAX_AGE_MS = 120 * 1000;
+const timetableBoardFutureToleranceMs = 30 * 1000;
 const timetableDayMs = 86400000;
 const timetableMadridParts = new Intl.DateTimeFormat('en-CA', {
   timeZone:TIMETABLE_ZONE, year:'numeric', month:'2-digit', day:'2-digit',
@@ -118,12 +121,20 @@ function timetableCanonicalCode(value) {
   const raw=value.trim();
   return /^\d+$/.test(raw) ? raw.replace(/^0+(?=\d)/,'') : raw;
 }
+/** A recent fetch alone is not enough: check the source's own timestamp. */
+export function isTimetableBoardFresh(board,now=Date.now()) {
+  return Number.isFinite(now) && Number.isFinite(board?.updatedAt) &&
+    now-board.updatedAt<=TIMETABLE_BOARD_MAX_AGE_MS && now-board.updatedAt>=-timetableBoardFutureToleranceMs;
+}
+export function isTimetableBoardValueFresh(value,now=Date.now()) {
+  return Number.isFinite(now) && Number.isFinite(value?.updatedAt) && Number.isFinite(value?.validUntil) &&
+    now>=value.updatedAt-timetableBoardFutureToleranceMs && now<=value.validUntil;
+}
 /** Match a board row only with the same train, station, route endpoints and
  * planned event time. `plannedTime` is scheduled; the displayed estimate/real
  * time is explicitly calculated as plannedTime + the published delay. */
 export function matchBoardEvent(board, journey, stopIndex, kind, now=Date.now()) {
-  if(!board || !journey || !['arrivals','departures'].includes(kind) || !Number.isFinite(now) ||
-     !Number.isFinite(board.updatedAt) || now-board.updatedAt>120000 || now-board.updatedAt< -30000 || !Array.isArray(board[kind]))return null;
+  if(!journey || !['arrivals','departures'].includes(kind) || !isTimetableBoardFresh(board,now) || !Array.isArray(board[kind]))return null;
   const visits=journey.pattern.visits, stop=visits[stopIndex];
   if(!stop)return null;
   const expected=journey.serviceStart+(kind==='arrivals'?stop.arrival:stop.departure)*1000;
@@ -139,38 +150,60 @@ export function matchBoardEvent(board, journey, stopIndex, kind, now=Date.now())
     if(!row.originCode || !row.destinationCode || timetableCanonicalCode(row.originCode)!==firstCode || timetableCanonicalCode(row.destinationCode)!==lastCode)continue;
     if((journey.pattern.feed===0 && row.trafficType==='CERCANIAS') || (journey.pattern.feed===1 && row.trafficType==='AVLDMD'))continue;
     if(/CANCEL|SUPRIM|ANUL/i.test(String(row.circulationState||'')+' '+String(row.announceState||'')))continue;
-    if(Number.isFinite(row.timestamp) && (now-row.timestamp>120000 || now-row.timestamp< -30000))continue;
+    if(row.timestamp!=null && !Number.isFinite(row.timestamp))continue;
+    if(Number.isFinite(row.timestamp) && (now-row.timestamp>TIMETABLE_BOARD_MAX_AGE_MS || now-row.timestamp< -timetableBoardFutureToleranceMs))continue;
     const time=row.plannedTime+row.delayMinutes*60000;
-    if(row.timeType==='REAL' && time>now+30000)continue;
-    matches.push({kind:row.timeType==='REAL'?'real':'estimada',time,delayMinutes:row.delayMinutes,updatedAt:board.updatedAt});
+    if(row.timeType==='REAL' && time>now+timetableBoardFutureToleranceMs)continue;
+    const validUntil=Math.min(board.updatedAt,Number.isFinite(row.timestamp)?row.timestamp:board.updatedAt)+TIMETABLE_BOARD_MAX_AGE_MS;
+    matches.push({kind:row.timeType==='REAL'?'real':'estimada',time,delayMinutes:row.delayMinutes,updatedAt:board.updatedAt,validUntil});
   }
   // Conflicting matching rows are ambiguous and must not be reported as facts.
   if(!matches.length || matches.some(m=>m.time!==matches[0].time || m.kind!==matches[0].kind))return null;
-  return matches[0];
+  return {...matches[0],validUntil:Math.min(...matches.map(match=>match.validUntil))};
 }
 
 export function createBoardSource({fetchImpl=(...args)=>globalThis.fetch(...args),clock=()=>Date.now()}={}) {
   const cache=new Map();
-  async function get(code) {
+  async function get(code,{signal}={}) {
     if(typeof code!=='string' || !/^\d{1,8}$/.test(code))throw new Error('Código de estación no válido.');
-    const key=timetableCanonicalCode(code),now=clock(),old=cache.get(key);
-    if(old && now-old.at>=0 && now-old.at<30000)return old.promise;
-    const promise=(async()=>{
+    if(signal?.aborted)throw new DOMException('Consulta cancelada.','AbortError');
+    const key=timetableCanonicalCode(code),now=clock();
+    for(const [cachedKey,item] of cache)if(!item.pending && (now-item.at<0 || now-item.at>=30000))cache.delete(cachedKey);
+    const old=cache.get(key);
+    // Never attach a new selection to a request canceled by an older selection.
+    if(old && now-old.at>=0 && now-old.at<30000 && !(old.pending && old.signal?.aborted))return old.promise;
+    // Keep long browsing sessions bounded without evicting requests in flight.
+    for(const [cachedKey,item] of cache)if(cache.size>=48 && !item.pending)cache.delete(cachedKey);
+    const entry={at:now,signal,pending:true,promise:null};
+    entry.promise=(async()=>{
       const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
+      const cancel=()=>controller.abort();
+      signal?.addEventListener('abort',cancel,{once:true});
+      if(signal?.aborted)controller.abort();
       try {
         const response=await fetchImpl(`https://radardetrenes.com/api/v1/stations/${encodeURIComponent(key)}/board-renfe`,
           {method:'GET',credentials:'omit',signal:controller.signal});
-        if(!response.ok)throw new Error(`Tablón HTTP ${response.status}`);
+        if(!response.ok) {
+          const error=new Error(`Tablón HTTP ${response.status}`);error.status=response.status;
+          if(response.status===429) {
+            const raw=response.headers?.get?.('retry-after'),seconds=raw && /^\d+$/.test(raw.trim()) ? Number(raw) : NaN;
+            const delay=Number.isFinite(seconds) ? seconds*1000 : raw ? Date.parse(raw)-clock() : NaN;
+            error.retryAfterMs=Number.isFinite(delay)&&delay>0 ? delay : 120000;
+          }
+          throw error;
+        }
         const length=Number(response.headers?.get?.('content-length'));
         if(Number.isFinite(length)&&length>1000000)throw new Error('Tablón demasiado grande.');
         const text=await response.text();if(text.length>1000000)throw new Error('Tablón demasiado grande.');
         const board=JSON.parse(text);
         if(!Number.isFinite(board?.updatedAt)||!Array.isArray(board.arrivals)||!Array.isArray(board.departures))throw new Error('Tablón no válido.');
         return board;
-      } finally {clearTimeout(timeout);}
+      } finally {clearTimeout(timeout);signal?.removeEventListener('abort',cancel);}
     })();
-    cache.set(key,{at:now,promise});
-    return promise;
+    cache.set(key,entry);
+    try {return await entry.promise;}
+    catch(error){if(cache.get(key)===entry)cache.delete(key);throw error;}
+    finally{entry.pending=false;}
   }
   return {get};
 }

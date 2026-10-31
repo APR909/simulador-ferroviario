@@ -1,6 +1,15 @@
-import { TIMETABLE_URL, TIMETABLE_WINDOW_MS, indexTimetable, findTimetableJourneys, formatTimetableTime, madridCalendarDate, matchBoardEvent, createBoardSource } from './timetable.js?v=13';
+import { TIMETABLE_URL, TIMETABLE_WINDOW_MS, TIMETABLE_BOARD_REFRESH_MS, indexTimetable, findTimetableJourneys, formatTimetableTime, madridCalendarDate, matchBoardEvent, createBoardSource, isTimetableBoardFresh, isTimetableBoardValueFresh } from './timetable.js?v=14';
 
 const timetableElement = id => document.getElementById(id);
+const timetableLiveClock = new Intl.DateTimeFormat('es-ES',{
+  timeZone:'Europe/Madrid',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23',
+});
+function timetableBoardCode(value) {
+  return typeof value==='string' && /^\d{1,8}$/.test(value) ? value.replace(/^0+(?=\d)/,'') : '';
+}
+function timetableDelayLabel(minutes) {
+  return minutes===0 ? 'sin demora publicada' : `${minutes>0?'+':''}${minutes} min`;
+}
 function timetableNode(tag,text,className='') {
   const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(className)node.className=className;return node;
 }
@@ -23,8 +32,8 @@ export async function initializeTimetableView(setupBasemap) {
   L.control.zoom({position:'topright'}).addTo(map);
   map.attributionControl.addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>');
   const drawing=L.layerGroup().addTo(map),boardSource=createBoardSource();
-  const state={index:null,windowEnd:Date.now(),results:[],limit:12,selected:null,boardValues:new Map(),
-    selectionVersion:0,boardBusy:false,markers:new Map(),statusBase:''};
+  const state={index:null,windowEnd:Date.now(),results:[],limit:12,selected:null,boardValues:new Map(),stationStates:new Map(),
+    selectionVersion:0,active:false,poll:null,pollTimer:null,expiryTimer:null,lastCycle:null,firstCycle:false,retryAfter:0,markers:new Map(),statusBase:''};
   setupBasemap(map,timetableElement('timetableBaseStatus'),timetableElement('timetableBaseRetry'));
   timetableElement('timetableBaseRetry').addEventListener('click',()=>setupBasemap(map,timetableElement('timetableBaseStatus'),timetableElement('timetableBaseRetry')));
 
@@ -60,16 +69,16 @@ export async function initializeTimetableView(setupBasemap) {
     timetableElement('timetableMore').textContent=`Mostrar más (${Math.max(0,state.results.length-state.limit)} restantes)`;
   }
   function resetSelection() {
-    state.selectionVersion++;state.selected=null;state.boardValues.clear();state.boardBusy=false;state.markers.clear();drawing.clearLayers();
+    state.selectionVersion++;stopAuto();state.selected=null;state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;state.firstCycle=false;state.markers.clear();drawing.clearLayers();
     timetableElement('timetableJourneyHeading').textContent='Selecciona un viaje';
     timetableElement('timetableJourneyMeta').textContent='Se mostrarán las paradas y sus horas publicadas.';
     timetableElement('timetableMapNotice').textContent='Selecciona un viaje para ver sus estaciones.';
-    timetableElement('timetableBoardStatus').textContent='No hay un viaje seleccionado.';
+    timetableElement('timetableBoardStatus').textContent='Selecciona un viaje para activar la consulta automática.';
     timetableElement('timetableBoardRefresh').disabled=true;
     const cell=timetableNode('td','Selecciona un viaje en la lista.');cell.colSpan=3;
     const row=timetableNode('tr');row.append(cell);timetableElement('timetableStops').replaceChildren(row);
   }
-  function updateResults() {
+  function updateResults({preserveSelection=false}={}) {
     const instant=updateClock();
     if(!state.index)return;
     const av=timetableElement('timetableAV').checked,commuter=timetableElement('timetableCommuter').checked;
@@ -85,7 +94,13 @@ export async function initializeTimetableView(setupBasemap) {
       (archived.length ? `Horario anterior conservado de una instantánea previa para ${archived.map(s=>s.label).join(' y ')}; puede no incluir cambios posteriores. ` : '');
     status.textContent=notices+state.statusBase;
     timetableElement('timetableCount').textContent=missing.length===enabled.length && enabled.length && !state.results.length ? '—' : state.results.length.toLocaleString('es-ES')+(missing.length?'*':'');
-    if(state.selected && !state.results.some(j=>j.key===state.selected.key))resetSelection();
+    const selectedIsListed=state.selected && state.results.some(j=>j.key===state.selected.key);
+    if(state.selected && !selectedIsListed && !preserveSelection)resetSelection();
+    else if(state.selected) {
+      const journey=state.selected;
+      timetableElement('timetableJourneyMeta').textContent=`${currentDescription(journey)} · día de servicio ${timetableDateLabel(journey.serviceDate)} · según horario`+
+        (selectedIsListed?'':' · viaje conservado para seguimiento, fuera del instante programado');
+    }
     renderList();
   }
   function drawJourney(journey) {
@@ -107,15 +122,33 @@ export async function initializeTimetableView(setupBasemap) {
   function timetableTimeCell(journey,index,kind) {
     const cell=timetableNode('td'),last=journey.pattern.visits.length-1;
     if((kind==='arrivals' && index===0)||(kind==='departures' && index===last)) {cell.textContent='—';return cell;}
-    const actual=state.boardValues.get(`${index}:${kind}`);
-    const timestamp=actual?.time ?? timetableStopEvent(journey,index,kind);
-    cell.append(timetableNode('b',formatTimetableTime(timestamp)),timetableNode('small',actual?.kind || 'programada',actual?.kind || 'programada'));
-    if(actual)cell.title=`Hora ${actual.kind}: programada más ${actual.delayMinutes} min de demora publicada. Tablón consultado ${formatTimetableTime(actual.updatedAt)}.`;
+    const planned=timetableNode('div',undefined,'timetable-time-planned');
+    planned.append(timetableNode('b',formatTimetableTime(timetableStopEvent(journey,index,kind))),timetableNode('small','programada','programada'));
+    cell.append(planned);
+    const value=state.boardValues.get(`${index}:${kind}`),actual=isTimetableBoardValueFresh(value) ? value : null;
+    if(actual) {
+      const live=timetableNode('div',undefined,`timetable-time-live ${actual.kind}`);
+      live.append(timetableNode('b',formatTimetableTime(actual.time)),timetableNode('small',`${actual.kind} · ${timetableDelayLabel(actual.delayMinutes)}`,actual.kind));
+      live.title=`Hora ${actual.kind}: programada más ${actual.delayMinutes} min de demora publicada. Última actualización del tablón: ${formatTimetableTime(actual.updatedAt)}.`;
+      cell.append(live);
+    } else {
+      const code=timetableBoardCode(journey.pattern.visits[index].station.code),status=state.stationStates.get(code);
+      let message=state.poll ? 'consultando…' : 'sin dato actual';
+      if(!code)message='sin código de tablón';
+      else if(status==='omitted')message='parada no consultada';
+      else if(status==='error')message='tablón no disponible';
+      else if(status==='rate')message='límite de consultas';
+      else if(status==='stale')message='tablón desactualizado';
+      else if(status==='ok')message='sin coincidencia actual';
+      cell.append(timetableNode('small',message,'timetable-no-live'));
+    }
     return cell;
   }
   function renderStops() {
     const journey=state.selected;if(!journey)return;
-    const body=timetableElement('timetableStops');body.replaceChildren();
+    const body=timetableElement('timetableStops'),wrap=body.closest('.timetable-table-wrap'),scrollTop=wrap?.scrollTop || 0;
+    const focused=document.activeElement?.closest?.('tr[id^="timetable-stop-"]')?.id;
+    body.replaceChildren();
     journey.pattern.visits.forEach((visit,index)=>{
       const row=timetableNode('tr');row.id=`timetable-stop-${index}`;
       const stationCell=timetableNode('td'),button=timetableNode('button',visit.station.name,'timetable-stop-button');button.type='button';
@@ -127,70 +160,144 @@ export async function initializeTimetableView(setupBasemap) {
       stationCell.append(button);row.append(stationCell,timetableTimeCell(journey,index,'arrivals'),timetableTimeCell(journey,index,'departures'));
       body.append(row);
     });
+    if(focused)timetableElement(focused)?.querySelector('button')?.focus({preventScroll:true});
+    if(wrap)wrap.scrollTop=scrollTop;
+  }
+  function canPoll() {
+    return Boolean(state.selected && state.active && !document.hidden && !timetableElement('timetableView').hidden);
+  }
+  function stopAuto() {
+    clearTimeout(state.pollTimer);state.pollTimer=null;
+    clearTimeout(state.expiryTimer);state.expiryTimer=null;
+    const poll=state.poll;state.poll=null;poll?.controller.abort();
+  }
+  function updateBoardStatus() {
+    const button=timetableElement('timetableBoardRefresh'),status=timetableElement('timetableBoardStatus'),now=Date.now();
+    button.disabled=!canPoll() || Boolean(state.poll) || now<state.retryAfter;
+    if(!state.selected){status.textContent='Selecciona un viaje para activar la consulta automática.';return;}
+    if(!canPoll()){status.textContent='Actualización automática pausada mientras esta vista o pestaña está oculta.';return;}
+    if(state.poll){status.textContent='AUTO · consultando los tablones actuales…';return;}
+    if(now<state.retryAfter){status.textContent='AUTO · límite de consultas del proveedor; se respetará el tiempo de espera antes de reintentar.';return;}
+    if(!state.lastCycle){status.textContent='AUTO · iniciando consulta de tablones actuales…';return;}
+    const {fresh,stale,failed,omitted,at}=state.lastCycle;
+    const parts=['AUTO · cada ~45 s',`${fresh} tablón(es) recientes`,`${state.boardValues.size} hora(s) coincidentes`,
+      `última comprobación ${timetableLiveClock.format(new Date(at))} · Madrid`];
+    if(stale)parts.push(`${stale} tablón(es) desactualizados`);
+    if(failed)parts.push(`${failed} tablón(es) no disponibles`);
+    if(omitted)parts.push(`límite de 12 · ${omitted} paradas sin consultar`);
+    status.textContent=parts.join(' · ')+'.';
+  }
+  function scheduleNextPoll() {
+    clearTimeout(state.pollTimer);state.pollTimer=null;
+    if(!canPoll())return;
+    const delay=Math.max(TIMETABLE_BOARD_REFRESH_MS,state.retryAfter-Date.now());
+    // Browsers cap setTimeout at a signed 32-bit millisecond interval.
+    state.pollTimer=setTimeout(refreshBoards,Math.min(delay,2147483000));
+  }
+  function scheduleExpiry() {
+    clearTimeout(state.expiryTimer);state.expiryTimer=null;
+    if(!canPoll() || !state.boardValues.size)return;
+    const expiry=Math.min(...[...state.boardValues.values()].map(value=>value.validUntil));
+    state.expiryTimer=setTimeout(()=>{
+      for(const [key,value] of state.boardValues)if(!isTimetableBoardValueFresh(value))state.boardValues.delete(key);
+      renderStops();updateBoardStatus();scheduleExpiry();
+    },Math.max(1,Math.min(2147483000,expiry-Date.now()+1)));
+  }
+  function pauseAuto() {
+    stopAuto();state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;
+    renderStops();updateBoardStatus();
   }
   function selectJourney(journey) {
-    state.selectionVersion++;state.selected=journey;state.boardValues.clear();state.boardBusy=false;
+    state.selectionVersion++;stopAuto();state.selected=journey;state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;state.firstCycle=true;
     timetableElement('timetableJourneyHeading').textContent=timetablePatternName(journey);
     timetableElement('timetableJourneyMeta').textContent=`${currentDescription(journey)} · día de servicio ${timetableDateLabel(journey.serviceDate)} · según horario`;
-    timetableElement('timetableBoardRefresh').disabled=false;
-    timetableElement('timetableBoardStatus').textContent='Pulsa «Consultar horas disponibles» para buscar estimaciones o horas reales en los tablones actuales.';
-    drawJourney(journey);renderStops();renderList();
+    drawJourney(journey);renderStops();renderList();updateBoardStatus();
+    if(canPoll())refreshBoards();
     if(window.matchMedia?.('(max-width:650px)').matches)timetableElement('timetableJourneyHeading').scrollIntoView({behavior:'smooth',block:'center'});
   }
   async function refreshBoards() {
-    const journey=state.selected;if(!journey||state.boardBusy)return;
-    state.boardBusy=true;const version=state.selectionVersion,visits=journey.pattern.visits,now=Date.now();
-    state.boardValues.clear();renderStops();
-    timetableElement('timetableBoardRefresh').disabled=true;
+    clearTimeout(state.pollTimer);state.pollTimer=null;
+    if(!canPoll() || state.poll)return;
+    if(Date.now()<state.retryAfter){updateBoardStatus();scheduleNextPoll();return;}
+    const journey=state.selected,visits=journey.pattern.visits,now=Date.now();
+    const token={version:state.selectionVersion,controller:new AbortController()};state.poll=token;
     // No bulk scrape: at most 12 unique numeric station codes, with no more
     // than three concurrent requests and a 30 s per-station cache.
-    const candidates=visits.map((visit,index)=>({index,code:visit.station.code,
+    const candidates=visits.map((visit,index)=>({index,code:timetableBoardCode(visit.station.code),
       distance:Math.abs(timetableStopEvent(journey,index,'arrivals')-now)}))
-      .filter(item=>/^\d{1,8}$/.test(item.code))
+      .filter(item=>item.code)
       .sort((a,b)=>a.distance-b.distance);
-    const byCode=new Map();
-    for(const item of candidates)if(!byCode.has(item.code.replace(/^0+(?=\d)/,'')))byCode.set(item.code.replace(/^0+(?=\d)/,''),item);
-    const codes=[...byCode.keys()].slice(0,12),boards=new Map();let cursor=0,failed=0;
-    timetableElement('timetableBoardStatus').textContent=`Consultando hasta ${codes.length} tablones actuales…`;
+    const byCode=new Map();for(const item of candidates)if(!byCode.has(item.code))byCode.set(item.code,item);
+    const codes=[...byCode.keys()].slice(0,12),boards=new Map(),failed=new Set();let cursor=0,rateLimited=false;
+    renderStops();updateBoardStatus();
     async function worker() {
-      while(cursor<codes.length) {
+      while(cursor<codes.length && !token.controller.signal.aborted && !rateLimited) {
         const code=codes[cursor++];
-        try{boards.set(code,await boardSource.get(code));}catch(_){failed++;}
+        try {
+          const board=await boardSource.get(code,{signal:token.controller.signal});
+          if(!token.controller.signal.aborted)boards.set(code,board);
+        } catch(error) {
+          if(token.controller.signal.aborted || state.poll!==token)return;
+          failed.add(code);
+          if(error?.status===429){rateLimited=true;state.retryAfter=Math.max(state.retryAfter,Date.now()+(error.retryAfterMs||120000));}
+        }
       }
     }
     await Promise.all(Array.from({length:Math.min(3,codes.length)},worker));
-    if(version!==state.selectionVersion)return;
-    let matched=0;
+    if(state.poll!==token || token.version!==state.selectionVersion || !canPoll())return;
+    state.poll=null;
+    const checkedAt=Date.now(),stationStates=new Map(),values=new Map();let fresh=0,stale=0;
+    for(const code of byCode.keys())stationStates.set(code,'omitted');
+    for(const code of codes)stationStates.set(code,rateLimited?'rate':'error');
+    for(const [code,board] of boards) {
+      if(isTimetableBoardFresh(board,checkedAt)){stationStates.set(code,'ok');fresh++;}
+      else{stationStates.set(code,'stale');stale++;}
+    }
+    for(const code of failed)stationStates.set(code,rateLimited?'rate':'error');
     for(let index=0;index<visits.length;index++) {
-      const code=visits[index].station.code.replace(/^0+(?=\d)/,''),board=boards.get(code);
-      if(!board)continue;
+      const code=timetableBoardCode(visits[index].station.code),board=boards.get(code);
+      if(!board || stationStates.get(code)!=='ok')continue;
       for(const kind of ['arrivals','departures']) {
         if((kind==='arrivals'&&index===0)||(kind==='departures'&&index===visits.length-1))continue;
-        const event=matchBoardEvent(board,journey,index,kind,Date.now());
-        if(event){state.boardValues.set(`${index}:${kind}`,event);matched++;}
+        const event=matchBoardEvent(board,journey,index,kind,checkedAt);
+        if(event)values.set(`${index}:${kind}`,event);
       }
     }
-    state.boardBusy=false;timetableElement('timetableBoardRefresh').disabled=false;renderStops();
-    const remaining=Math.max(0,byCode.size-codes.length);
-    timetableElement('timetableBoardStatus').textContent=boards.size
-      ? `${boards.size} tablón(es) consultados · ${matched} hora(s) estimadas o reales coincidentes${remaining ? ` · límite de 12; ${remaining} paradas sin consultar` : ''}. Las demás son programadas.`
-      : `No se pudieron consultar los tablones${failed ? ' · revisa la conexión' : ''}. Se mantienen las horas programadas.`;
+    state.stationStates=stationStates;state.boardValues=values;
+    state.lastCycle={fresh,stale,failed:failed.size,omitted:Math.max(0,byCode.size-codes.length),at:checkedAt};
+    renderStops();
+    // On the first cycle only, reveal the live event nearest the present.
+    // Never move the user's table on subsequent automatic updates.
+    if(state.firstCycle && values.size) {
+      const [key]=[...values.entries()].sort((a,b)=>Math.abs(a[1].time-checkedAt)-Math.abs(b[1].time-checkedAt))[0];
+      const row=timetableElement(`timetable-stop-${key.split(':')[0]}`),wrap=row?.closest('.timetable-table-wrap');
+      if(row && wrap)wrap.scrollTop+=row.getBoundingClientRect().top-wrap.getBoundingClientRect().top-wrap.clientHeight/3;
+    }
+    state.firstCycle=false;
+    updateBoardStatus();scheduleExpiry();scheduleNextPoll();
   }
   timetableElement('timetableRange').addEventListener('input',()=>{state.limit=12;updateResults();});
   timetableElement('timetableSearch').addEventListener('input',()=>{state.limit=12;updateResults();});
   for(const id of ['timetableAV','timetableCommuter'])timetableElement(id).addEventListener('change',()=>{state.limit=12;updateResults();});
   timetableElement('timetableMore').addEventListener('click',()=>{state.limit+=12;renderList();});
   timetableElement('timetableBoardRefresh').addEventListener('click',refreshBoards);
+  function advanceWindow() {
+    const range=timetableElement('timetableRange'),wasNow=Number(range.value)>=1439,previous=state.windowEnd-TIMETABLE_WINDOW_MS+Number(range.value)*60000;
+    state.windowEnd=Date.now();
+    range.value=String(wasNow?1440:Math.max(0,Math.min(1440,Math.round((previous-(state.windowEnd-TIMETABLE_WINDOW_MS))/60000))));
+    updateResults({preserveSelection:true});
+  }
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden)pauseAuto();
+    else if(state.active){advanceWindow();if(state.selected)refreshBoards();}
+  });
   for(const button of document.querySelectorAll('[data-timetable-offset]'))button.addEventListener('click',()=>{
     state.windowEnd=Date.now();timetableElement('timetableRange').value=String(1440-Number(button.dataset.timetableOffset)*60);
     state.limit=12;updateResults();
   });
   setInterval(()=>{
     if(document.hidden || timetableElement('timetableView').hidden)return;
-    const range=timetableElement('timetableRange'),wasNow=Number(range.value)>=1439,previous=state.windowEnd-TIMETABLE_WINDOW_MS+Number(range.value)*60000;
-    state.windowEnd=Date.now();
-    range.value=String(wasNow?1440:Math.max(0,Math.min(1440,Math.round((previous-(state.windowEnd-TIMETABLE_WINDOW_MS))/60000))));
-    updateResults();
+    advanceWindow();
   },60000);
   updateClock();
   try {
@@ -209,5 +316,14 @@ export async function initializeTimetableView(setupBasemap) {
     timetableElement('timetableResults').replaceChildren(timetableNode('p','No hay una instantánea de horarios disponible.','timetable-empty'));
     console.error(error);
   }
-  return {show(){requestAnimationFrame(()=>map.invalidateSize({animate:false}));updateResults();},map};
+  return {
+    show(){
+      state.active=true;
+      requestAnimationFrame(()=>map.invalidateSize({animate:false}));
+      advanceWindow();
+      if(state.selected && !document.hidden)refreshBoards();else updateBoardStatus();
+    },
+    hide(){state.active=false;pauseAuto();},
+    map,
+  };
 }

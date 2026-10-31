@@ -48,9 +48,9 @@ def replace_required(content, old, new):
 
 html = replace_required(html, '<link rel="stylesheet" href="vendor/leaflet.css">', f'<style>\n{leaflet_css}\n</style>')
 html = replace_required(html, '<link rel="stylesheet" href="vendor/maplibre-gl.css">', f'<style>\n{maplibre_css}\n</style>')
-html = replace_required(html, '<link rel="stylesheet" href="styles.css?v=13">', f'<style>\n{style}\n</style>')
+html = replace_required(html, '<link rel="stylesheet" href="styles.css?v=14">', f'<style>\n{style}\n</style>')
 html = replace_required(html, '<script src="vendor/leaflet.js"></script>', '<script>\n' + leaflet_js.replace('</script', '<\\/script') + '\n</script>')
-html = replace_required(html, '<script type="module" src="src/app.js?v=13"></script>', '<script>window.RAIL_SAMPLE = ' + embedded_data + '; window.RAIL_SPAIN_SAMPLE = ' + embedded_spain + '; window.RAIL_INFRASTRUCTURE = ' + embedded_infrastructure + '; window.RAIL_LTV_SAMPLE = ' + embedded_ltv + '; window.RAIL_TIMETABLE_SAMPLE = ' + embedded_timetable + ';</script>\n' + embedded_maplibre + '<script type="module">\n' + ''.join(modules).replace('</script', '<\\/script') + '\n</script>')
+html = replace_required(html, '<script type="module" src="src/app.js?v=14"></script>', '<script>window.RAIL_SAMPLE = ' + embedded_data + '; window.RAIL_SPAIN_SAMPLE = ' + embedded_spain + '; window.RAIL_INFRASTRUCTURE = ' + embedded_infrastructure + '; window.RAIL_LTV_SAMPLE = ' + embedded_ltv + '; window.RAIL_TIMETABLE_SAMPLE = ' + embedded_timetable + ';</script>\n' + embedded_maplibre + '<script type="module">\n' + ''.join(modules).replace('</script', '<\\/script') + '\n</script>')
 output = root / 'simulador.html'
 output.write_text(html, encoding='utf-8')
 print(f'Generado {output} ({output.stat().st_size:,} bytes)')
