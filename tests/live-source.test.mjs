@@ -77,3 +77,19 @@ test('con file:// consulta directamente Radar y conserva errores sin inventar ce
   await assert.rejects(source.get('sevilla'),/offline/);await assert.rejects(source.get('espana'),/offline/);assert.equal(calls,1);
   ms=30000;assert.equal((await source.get('espana')).feeds.larga_distancia.count,1);assert.equal(calls,2);
 });
+
+test('Itinerarios puede usar Radar directamente y compartir la misma caché',async()=>{
+  let calls=0;
+  const source=createLiveSource({clock:()=>NOW,monotonic:()=>0,protocol:()=> 'https:',fetchImpl:async url=>{
+    calls++;assert.equal(url,RADAR_BROWSER_URL);
+    return response(fleet([train('01307',{trainCode:'01307',originCode:'51003',destinationCode:'51405',line:'C1',nextStationName:'Cádiz',delayMinutes:7})]));
+  }});
+  const [a,b]=await Promise.all([source.get('espana',{forceRadar:true}),source.get('sevilla',{forceRadar:true})]);
+  assert.equal(calls,1);const v=a.feeds.larga_distancia.vehicles[0];
+  assert.equal(v.origin_code,'51003');assert.equal(v.destination_code,'51405');assert.equal(v.next_station,'Cádiz');assert.equal(v.delay_minutes,7);
+  assert.equal(b.feeds.larga_distancia.count,1);
+});
+test('una ruta contradictoria en duplicados no se usa para emparejar itinerarios',()=>{
+  const parsed=parseRadarBrowserFleet(fleet([train('x',{originCode:'1',destinationCode:'2'}),train('x',{originCode:'1',destinationCode:'3'})]));
+  assert.equal(parsed.valid[0].route_ambiguous,true);assert.equal(parsed.valid[0].destination_code,'');
+});

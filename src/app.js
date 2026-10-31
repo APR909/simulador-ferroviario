@@ -3,10 +3,10 @@ import { pointAt, sliceRoute } from './geo.js';
 import { buildDemoScenario, makeCustomScenarioLine } from './scenario.js';
 import { MultiSimulation } from './multiline.js';
 import { LIVE_POLL_MS, summarizeLive, isExpressService } from './realtime.js?v=12';
-import { fetchLivePositions } from './live-source.js?v=12';
+import { fetchLivePositions } from './live-source.js?v=15';
 import { createLiveMotionLayer, createLiveTrainIcon, liveIconKind } from './live-motion.js?v=12';
-import { initializeNationalMap } from './national.js?v=12';
-import { initializeTimetableView } from './timetable-ui.js?v=14';
+import { initializeNationalMap } from './national.js?v=15';
+import { initializeTimetableView } from './timetable-ui.js?v=15';
 import { initializeInfrastructure, infrastructureTrackPopup } from './infrastructure.js?v=12';
 import { initializeTheme } from './theme.js?v=12';
 

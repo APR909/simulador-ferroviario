@@ -366,3 +366,23 @@ html[data-theme="dark"] .timetable-board-button:hover:not(:disabled){background:
   .timetable-layout>.timetable-main{order:3}
   html[data-theme="dark"] .timetable-sidebar>.timetable-controls,html[data-theme="dark"] .timetable-sidebar>.timetable-source{background:#13231c}
 }
+
+/* Current journeys are observed snapshots, independent of the historical slider. */
+.timetable-current .section-title{margin-bottom:8px}.timetable-current-count{font-size:11px;color:#227d69;font-variant-numeric:tabular-nums}
+.timetable-current-description{font-size:10px;line-height:1.45;color:#72877a;margin:0 0 12px}.timetable-current .field-label{margin-bottom:6px}
+.timetable-current-tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:9px;color:#668071;font-size:10px;font-weight:700}
+.timetable-current-tools select{padding:5px 7px;border:1px solid #dce6dc;border-radius:4px;background:#fff;color:#345a4a;font-size:10px}
+.timetable-current-map-toggle{display:flex;align-items:center;gap:4px;margin-left:auto}.timetable-current-map-toggle input{accent-color:#278a77}
+.timetable-current-legend{margin:8px 0 0;color:#668071;font-size:9px;line-height:1.4}
+.timetable-current-status{padding:8px 9px;margin:10px 0;background:#eef7f2;border:1px solid #d4e9dd;border-radius:5px;color:#557769;font-size:9px;line-height:1.45}
+.timetable-current-results{max-height:260px}.timetable-current-result .timetable-current-badge{color:#27846c}.timetable-current-match{font-size:9px;color:#51846e}
+html[data-theme="dark"] .timetable-current-count{color:#8cdeb5}html[data-theme="dark"] .timetable-current-description,html[data-theme="dark"] .timetable-current-tools,html[data-theme="dark"] .timetable-current-legend{color:#b3cbbb}
+html[data-theme="dark"] .timetable-current-tools select{background:#172b22;border-color:#405e4d;color:#e2f3e7}
+html[data-theme="dark"] .timetable-current-status{background:#1b3b2d;border-color:#3f6651;color:#badcc8}
+html[data-theme="dark"] .timetable-current-result .timetable-current-badge,html[data-theme="dark"] .timetable-current-match{color:#a4e4bc}
+@media(max-width:650px){
+  .timetable-sidebar>.timetable-current{order:1;background:#fff;padding:16px 18px}
+  .timetable-sidebar>.timetable-controls{order:2}.timetable-sidebar>.timetable-source{order:3}.timetable-layout>.timetable-main{order:4}
+  .timetable-current-results{max-height:240px}
+  html[data-theme="dark"] .timetable-sidebar>.timetable-current{background:#13231c}
+}

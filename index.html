@@ -8,7 +8,7 @@
   <title>Vía Lab · Red ferroviaria de España y Sevilla</title>
   <link rel="stylesheet" href="vendor/leaflet.css">
   <link rel="stylesheet" href="vendor/maplibre-gl.css">
-  <link rel="stylesheet" href="styles.css?v=14">
+  <link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
   <header class="topbar">
@@ -27,7 +27,7 @@
       <svg class="theme-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.2" stroke="currentColor" stroke-width="1.6"/><path d="M10 1.8v2M10 16.2v2M1.8 10h2m12.4 0h2M4.2 4.2l1.4 1.4m8.8 8.8 1.4 1.4m0-11.6-1.4 1.4m-8.8 8.8-1.4 1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       <span id="themeLabel">Oscuro</span>
     </button>
-    <div class="topbar-right"><span class="demo-badge"><span class="status-dot"></span> VÍAS REALES · SIMULACIÓN DIDÁCTICA</span><span class="version">v 0.11</span></div>
+    <div class="topbar-right"><span class="demo-badge"><span class="status-dot"></span> VÍAS REALES · SIMULACIÓN DIDÁCTICA</span><span class="version">v 0.12</span></div>
   </header>
 
   <div class="app-layout view" id="sevillaView">
@@ -268,6 +268,17 @@
         <h1>Viajes en<br> el tiempo<span class="heading-dot">.</span></h1>
         <p>Explora los itinerarios programados de las últimas 24 horas. <b>No son posiciones GPS históricas ni confirman que el tren circulase.</b></p>
       </div>
+      <section class="panel-section timetable-current" aria-labelledby="timetable-current-heading">
+        <div class="section-title"><h2 id="timetable-current-heading">RECORRIDOS EN CURSO · AHORA</h2><strong id="timetableCurrentCount" class="timetable-current-count">—</strong></div>
+        <p class="timetable-current-description">Trenes detectados en la última instantánea disponible. Cobertura parcial; un punto no confirma que el tren se esté moviendo.</p>
+        <label class="field-label" for="timetableCurrentSearch">BUSCAR TREN, LÍNEA O ESTACIÓN</label>
+        <input id="timetableCurrentSearch" class="timetable-search" type="search" autocomplete="off" placeholder="Ej. 13073, C1 o Sevilla">
+        <div class="timetable-current-tools"><label for="timetableCurrentType">Tipo</label><select id="timetableCurrentType"><option value="all">Todos</option><option value="long_distance">AV / LD / MD</option><option value="commuter">Cercanías</option></select><label class="timetable-current-map-toggle"><input id="timetableCurrentMap" type="checkbox" checked> Ver puntos en mapa</label></div>
+        <p class="timetable-current-legend">Puntos: azul AV / LD / MD · verde Cercanías · ámbar seleccionado.</p>
+        <p id="timetableCurrentStatus" class="timetable-current-status" role="status">Conectando con la flota actual…</p>
+        <div id="timetableCurrentResults" class="timetable-results timetable-current-results" aria-label="Trenes detectados actualmente"></div>
+        <button type="button" id="timetableCurrentMore" class="timetable-more" hidden>Mostrar más recorridos</button>
+      </section>
       <section class="panel-section timetable-controls" aria-labelledby="timetable-heading">
         <div class="section-title"><h2 id="timetable-heading">LÍNEA DE TIEMPO</h2><span class="section-number">24 H</span></div>
         <div class="timetable-time-row"><span class="field-label">INSTANTE SELECCIONADO · MADRID</span><output id="timetableTime" for="timetableRange">Cargando…</output></div>
@@ -287,11 +298,11 @@
     </aside>
     <main class="map-panel timetable-main">
       <div class="map-header timetable-map-header">
-        <div><div class="map-overline"><span class="map-overline-dot"></span> ITINERARIO PROGRAMADO · NO ES GPS</div><div class="map-heading"><h2>Recorrido y paradas</h2></div></div>
-        <span class="timetable-map-label">Línea entre estaciones · no es el trazado real</span>
+        <div><div class="map-overline"><span class="map-overline-dot"></span> ITINERARIOS Y OBSERVACIONES ACTUALES</div><div class="map-heading"><h2>Recorrido y paradas</h2></div></div>
+        <span class="timetable-map-label">Línea programada entre estaciones · puntos de la flota actual</span>
       </div>
       <div class="map-wrap timetable-map-wrap">
-        <div id="timetableMap" role="application" aria-label="Mapa de paradas programadas"></div>
+        <div id="timetableMap" role="application" aria-label="Mapa de paradas programadas y posiciones actuales detectadas"></div>
         <div class="timetable-map-notice" id="timetableMapNotice">Selecciona un viaje para ver sus estaciones.</div>
         <div class="timetable-base base-status" aria-live="polite"><span id="timetableBaseStatus">Conectando mapa de fondo…</span><button type="button" id="timetableBaseRetry" hidden>Reintentar</button></div>
       </div>
@@ -305,6 +316,6 @@
   </div>
 
   <script src="vendor/leaflet.js"></script>
-  <script type="module" src="src/app.js?v=14"></script>
+  <script type="module" src="src/app.js?v=15"></script>
 </body>
 </html>

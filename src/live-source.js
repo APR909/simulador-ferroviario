@@ -51,6 +51,8 @@ export function parseRadarBrowserFleet(payload) {
       service_name:radarBrowserText(row.productName,100)||null,product_category:radarBrowserText(row.productCategory,30),
       origin:radarBrowserText(row.originName),destination:radarBrowserText(row.destinationName),
       origin_code:radarBrowserText(row.originCode,30),destination_code:radarBrowserText(row.destinationCode,30),
+      line:radarBrowserText(row.line,40),next_station:radarBrowserText(row.nextStationName,150),
+      delay_minutes:Number.isInteger(row.delayMinutes) && Math.abs(row.delayMinutes)<=720 ? row.delayMinutes : null,
       source_provider:'radar',service_identification:'radar_product',reported_stale:row.stale===true,type,
       _positions:[[latitude,longitude]]};
     const key=`${type}:${identifier}`,previous=byId.get(key);
@@ -59,6 +61,13 @@ export function parseRadarBrowserFleet(payload) {
       if(!previous._positions.some(([a,b])=>a===latitude&&b===longitude))previous._positions.push([latitude,longitude]);
       if(entry.service_name!==previous.service_name || entry.product_category!==previous.product_category){previous.service_name=null;previous.product_category='';}
       if(entry.trip_id!==previous.trip_id){previous.trip_id='';previous.trip_ids=[];}
+      // Contradictory route identifiers must never be joined to a scheduled trip.
+      if(entry.label!==previous.label || entry.origin_code!==previous.origin_code || entry.destination_code!==previous.destination_code) {
+        previous.origin_code='';previous.destination_code='';previous.route_ambiguous=true;
+      }
+      if(entry.line!==previous.line)previous.line='';
+      if(entry.next_station!==previous.next_station)previous.next_station='';
+      if(entry.delay_minutes!==previous.delay_minutes)previous.delay_minutes=null;
       previous.reported_stale ||= entry.reported_stale;
     }
   }
@@ -123,9 +132,10 @@ export function createLiveSource({fetchImpl=(...args)=>globalThis.fetch(...args)
     if(!cached)throw lastError || new Error('RadarDeTrenes no disponible.');
     return radarBrowserSnapshot(cached.parsed,scope,clock(),cached.fetchedAt);
   }
-  async function get(scope,{signal}={}) {
+  async function get(scope,{signal,forceRadar=false}={}) {
     if(!RADAR_BROWSER_BOXES[scope])throw new Error('Ámbito no válido.');
-    if(/^https?:$/.test(protocol())) {
+    if(signal?.aborted)throw new DOMException('Consulta cancelada.','AbortError');
+    if(!forceRadar && /^https?:$/.test(protocol())) {
       const url=scope==='espana'?'./api/trenes?ambito=espana':'./api/trenes';
       try {
         const response=await fetchImpl(url,{cache:'no-store',signal});
@@ -136,9 +146,13 @@ export function createLiveSource({fetchImpl=(...args)=>globalThis.fetch(...args)
         return payload;
       } catch(error) {if(signal?.aborted)throw error;}
     }
-    return directSnapshot(scope);
+    const payload=await directSnapshot(scope);
+    if(signal?.aborted)throw new DOMException('Consulta cancelada.','AbortError');
+    return payload;
   }
   return {get};
 }
 const sharedLiveSource=createLiveSource();
 export function fetchLivePositions(scope,options) {return sharedLiveSource.get(scope,options);}
+/** Consistent attributed fleet for itinerary matching, even with a local API. */
+export function fetchRadarPositions(scope,options={}) {return sharedLiveSource.get(scope,{...options,forceRadar:true});}

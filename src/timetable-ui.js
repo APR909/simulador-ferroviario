@@ -1,4 +1,7 @@
-import { TIMETABLE_URL, TIMETABLE_WINDOW_MS, TIMETABLE_BOARD_REFRESH_MS, indexTimetable, findTimetableJourneys, formatTimetableTime, madridCalendarDate, matchBoardEvent, createBoardSource, isTimetableBoardFresh, isTimetableBoardValueFresh } from './timetable.js?v=14';
+import { TIMETABLE_URL, TIMETABLE_WINDOW_MS, TIMETABLE_BOARD_REFRESH_MS, indexTimetable, findTimetableJourneys, formatTimetableTime, timetableSearchText, madridCalendarDate, matchBoardEvent, createBoardSource, isTimetableBoardFresh, isTimetableBoardValueFresh } from './timetable.js?v=15';
+import { LIVE_POLL_MS, summarizeLive, recentTimestamp } from './realtime.js?v=12';
+import { fetchRadarPositions } from './live-source.js?v=15';
+import { matchLiveJourneys } from './live-journeys.js?v=15';
 
 const timetableElement = id => document.getElementById(id);
 const timetableLiveClock = new Intl.DateTimeFormat('es-ES',{
@@ -31,9 +34,10 @@ export async function initializeTimetableView(setupBasemap) {
   const map=L.map('timetableMap',{zoomControl:false,preferCanvas:true,zoomSnap:.5,maxZoom:18}).setView([40,-4],6);
   L.control.zoom({position:'topright'}).addTo(map);
   map.attributionControl.addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>');
-  const drawing=L.layerGroup().addTo(map),boardSource=createBoardSource();
+  const drawing=L.layerGroup().addTo(map),currentLayer=L.layerGroup().addTo(map),boardSource=createBoardSource();
   const state={index:null,windowEnd:Date.now(),results:[],limit:12,selected:null,boardValues:new Map(),stationStates:new Map(),
-    selectionVersion:0,active:false,poll:null,pollTimer:null,expiryTimer:null,lastCycle:null,firstCycle:false,retryAfter:0,markers:new Map(),statusBase:''};
+    selectionVersion:0,active:false,poll:null,pollTimer:null,expiryTimer:null,lastCycle:null,firstCycle:false,retryAfter:0,markers:new Map(),statusBase:'',
+    current:{payload:null,vehicles:[],filtered:[],matches:new Map(),selectedId:null,selectedKey:null,selectedSignature:'',limit:8,busy:false,sequence:0,timer:null,expiry:null,status:'loading'}};
   setupBasemap(map,timetableElement('timetableBaseStatus'),timetableElement('timetableBaseRetry'));
   timetableElement('timetableBaseRetry').addEventListener('click',()=>setupBasemap(map,timetableElement('timetableBaseStatus'),timetableElement('timetableBaseRetry')));
 
@@ -69,7 +73,7 @@ export async function initializeTimetableView(setupBasemap) {
     timetableElement('timetableMore').textContent=`Mostrar más (${Math.max(0,state.results.length-state.limit)} restantes)`;
   }
   function resetSelection() {
-    state.selectionVersion++;stopAuto();state.selected=null;state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;state.firstCycle=false;state.markers.clear();drawing.clearLayers();
+    state.selectionVersion++;stopAuto();state.selected=null;state.current.selectedId=null;state.current.selectedKey=null;state.current.selectedSignature='';state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;state.firstCycle=false;state.markers.clear();drawing.clearLayers();
     timetableElement('timetableJourneyHeading').textContent='Selecciona un viaje';
     timetableElement('timetableJourneyMeta').textContent='Se mostrarán las paradas y sus horas publicadas.';
     timetableElement('timetableMapNotice').textContent='Selecciona un viaje para ver sus estaciones.';
@@ -77,6 +81,7 @@ export async function initializeTimetableView(setupBasemap) {
     timetableElement('timetableBoardRefresh').disabled=true;
     const cell=timetableNode('td','Selecciona un viaje en la lista.');cell.colSpan=3;
     const row=timetableNode('tr');row.append(cell);timetableElement('timetableStops').replaceChildren(row);
+    renderCurrentList();renderCurrentMap();
   }
   function updateResults({preserveSelection=false}={}) {
     const instant=updateClock();
@@ -98,7 +103,9 @@ export async function initializeTimetableView(setupBasemap) {
     if(state.selected && !selectedIsListed && !preserveSelection)resetSelection();
     else if(state.selected) {
       const journey=state.selected;
-      timetableElement('timetableJourneyMeta').textContent=`${currentDescription(journey)} · día de servicio ${timetableDateLabel(journey.serviceDate)} · según horario`+
+      const current=state.current.selectedId ? state.current.vehicles.find(v=>v.id===state.current.selectedId) : null;
+      const observation=state.current.selectedId ? (current?' · detectado en la última instantánea':' · ya no aparece en la instantánea actual') : '';
+      timetableElement('timetableJourneyMeta').textContent=`${currentDescription(journey)} · día de servicio ${timetableDateLabel(journey.serviceDate)} · según horario${observation}`+
         (selectedIsListed?'':' · viaje conservado para seguimiento, fuera del instante programado');
     }
     renderList();
@@ -117,7 +124,7 @@ export async function initializeTimetableView(setupBasemap) {
     });
     const bounds=L.latLngBounds(coordinates);
     if(bounds.isValid())requestAnimationFrame(()=>{map.invalidateSize({animate:false});map.fitBounds(bounds,{padding:[35,35],maxZoom:12,animate:false});});
-    timetableElement('timetableMapNotice').textContent='Paradas programadas · la línea recta no representa la vía ni un recorrido GPS.';
+    timetableElement('timetableMapNotice').textContent='Línea entre paradas programadas · puntos de la instantánea actual; no son un recorrido GPS histórico.';
   }
   function timetableTimeCell(journey,index,kind) {
     const cell=timetableNode('td'),last=journey.pattern.visits.length-1;
@@ -207,11 +214,12 @@ export async function initializeTimetableView(setupBasemap) {
     stopAuto();state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;
     renderStops();updateBoardStatus();
   }
-  function selectJourney(journey) {
-    state.selectionVersion++;stopAuto();state.selected=journey;state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;state.firstCycle=true;
+  function selectJourney(journey,{liveId=null}={}) {
+    state.selectionVersion++;stopAuto();state.selected=journey;state.current.selectedId=liveId;state.current.selectedKey=liveId ? journey.key : null;state.current.selectedSignature=liveId ? currentIdentity(state.current.vehicles.find(v=>v.id===liveId)) : '';state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;state.firstCycle=true;
     timetableElement('timetableJourneyHeading').textContent=timetablePatternName(journey);
     timetableElement('timetableJourneyMeta').textContent=`${currentDescription(journey)} · día de servicio ${timetableDateLabel(journey.serviceDate)} · según horario`;
-    drawJourney(journey);renderStops();renderList();updateBoardStatus();
+    drawJourney(journey);renderStops();renderList();renderCurrentList();renderCurrentMap();updateBoardStatus();
+    if(liveId)updateResults({preserveSelection:true});
     if(canPoll())refreshBoards();
     if(window.matchMedia?.('(max-width:650px)').matches)timetableElement('timetableJourneyHeading').scrollIntoView({behavior:'smooth',block:'center'});
   }
@@ -276,6 +284,154 @@ export async function initializeTimetableView(setupBasemap) {
     state.firstCycle=false;
     updateBoardStatus();scheduleExpiry();scheduleNextPoll();
   }
+  function currentCanPoll() {
+    return state.active && !document.hidden && !timetableElement('timetableView').hidden;
+  }
+  function currentSearchText(vehicle) {
+    return timetableSearchText([vehicle.label,vehicle.service_name,vehicle.line,vehicle.origin,vehicle.destination,vehicle.next_station].join(' '));
+  }
+  function currentIdentity(vehicle) {
+    return vehicle ? JSON.stringify([vehicle.type,vehicle.label,vehicle.origin_code,vehicle.destination_code,Boolean(vehicle.route_ambiguous)]) : '';
+  }
+  function currentName(vehicle) {
+    return `${vehicle.service_name || (vehicle.type==='commuter'?'Cercanías':'Renfe')} · ${vehicle.label}`;
+  }
+  function currentRoute(vehicle) {
+    return `${vehicle.origin || 'Origen no publicado'} → ${vehicle.destination || 'Destino no publicado'}`;
+  }
+  function renderCurrentList() {
+    const live=state.current,container=timetableElement('timetableCurrentResults'),count=timetableElement('timetableCurrentCount');
+    const query=timetableSearchText(timetableElement('timetableCurrentSearch').value),type=timetableElement('timetableCurrentType').value;
+    live.filtered=live.vehicles.filter(v=>(type==='all'||v.type===type) && (!query || currentSearchText(v).includes(query)));
+    live.filtered.sort((a,b)=>String(a.label).localeCompare(String(b.label),'es',{numeric:true}));
+    count.textContent=live.status==='ready' ? `${live.filtered.length.toLocaleString('es-ES')} / ${live.vehicles.length.toLocaleString('es-ES')}` : '—';
+    container.replaceChildren();
+    if(live.status==='ready' && !live.filtered.length)container.append(timetableNode('p','No hay trenes detectados que coincidan con el filtro.','timetable-empty'));
+    else if(live.status!=='ready')container.append(timetableNode('p',live.status==='paused'?'La consulta se reanuda al volver a esta vista.':'A la espera de una instantánea reciente.','timetable-empty'));
+    for(const vehicle of live.filtered.slice(0,live.limit)) {
+      const button=timetableNode('button',undefined,'timetable-result timetable-current-result');button.type='button';
+      button.classList.toggle('selected',live.selectedId===vehicle.id);button.setAttribute('aria-pressed',String(live.selectedId===vehicle.id));
+      const head=timetableNode('span',undefined,'timetable-result-head');
+      head.append(timetableNode('strong',currentName(vehicle)),timetableNode('small','DETECTADO','timetable-current-badge'));
+      button.append(head,timetableNode('span',currentRoute(vehicle),'timetable-result-route'));
+      const detail=[vehicle.line,vehicle.next_station?`Próxima: ${vehicle.next_station}`:'',
+        Number.isInteger(vehicle.delay_minutes)?`Demora publicada: ${timetableDelayLabel(vehicle.delay_minutes)}`:''].filter(Boolean).join(' · ');
+      if(detail)button.append(timetableNode('span',detail,'timetable-result-time'));
+      button.append(timetableNode('span',live.matches.has(vehicle.id)?'Paradas programadas disponibles':'Sin itinerario inequívoco asociado','timetable-current-match'));
+      button.addEventListener('click',()=>selectCurrent(vehicle.id));container.append(button);
+    }
+    const more=timetableElement('timetableCurrentMore');more.hidden=live.status!=='ready' || live.limit>=live.filtered.length;
+    more.textContent=`Mostrar más (${Math.max(0,live.filtered.length-live.limit)} restantes)`;
+  }
+  function renderCurrentMap() {
+    const live=state.current;currentLayer.clearLayers();
+    const enabled=timetableElement('timetableCurrentMap').checked;
+    if(!enabled)return;
+    const vehicles=live.filtered.slice(0,800);
+    const selectedVehicle=live.vehicles.find(v=>v.id===live.selectedId);
+    if(selectedVehicle && !vehicles.some(v=>v.id===selectedVehicle.id))vehicles.push(selectedVehicle);
+    for(const vehicle of vehicles) {
+      const selected=vehicle.id===live.selectedId,commuter=vehicle.time_basis==='feed';
+      const marker=L.circleMarker([vehicle.latitude,vehicle.longitude],{radius:selected?7:4,weight:selected?2:1.3,
+        color:'#fff',fillColor:selected?'#ef9f43':commuter?'#338d82':'#367eb7',fillOpacity:.9}).addTo(currentLayer);
+      const tooltip=timetableNode('div');
+      tooltip.append(timetableNode('strong',currentName(vehicle)),timetableNode('span',` · ${currentRoute(vehicle)}`));
+      tooltip.append(timetableNode('small',commuter?' · hora GPS individual no verificada':' · posición con hora individual publicada'));
+      marker.bindTooltip(tooltip);marker.on('click',()=>selectCurrent(vehicle.id));
+    }
+  }
+  function updateCurrentStatus(summary=null) {
+    const live=state.current,status=timetableElement('timetableCurrentStatus');
+    if(!summary && live.payload)summary=summarizeLive(live.payload,Date.now()/1000);
+    if(live.status==='paused'){status.textContent='Consulta pausada mientras esta vista o pestaña está oculta.';return;}
+    if(live.status==='loading'){status.textContent='Consultando la flota actual de RadarDeTrenes…';return;}
+    if(live.status!=='ready'){status.textContent='SIN DATOS RECIENTES · la fuente no está disponible o la instantánea está desactualizada.';return;}
+    const observed=summary?.cercanias?.feed_time_fallback ?? live.vehicles.filter(v=>v.time_basis==='feed').length;
+    const times=[summary?.cercanias?.header_timestamp,summary?.larga?.header_timestamp].filter(Number.isFinite);
+    const last=times.length ? timetableLiveClock.format(new Date(Math.min(...times)*1000)) : '—';
+    status.textContent=`RadarDeTrenes · Renfe / ADIF · instantánea ${last} Madrid · cobertura parcial · ${observed} sin hora GPS individual verificada${live.filtered.length>800?' · mapa limitado a 800 puntos':''}.`;
+  }
+  function updateCurrentFromPayload() {
+    const live=state.current,summary=live.payload ? summarizeLive(live.payload,Date.now()/1000) : null;
+    live.status=summary?.usable?'ready':'stale';
+    live.vehicles=summary?.usable ? summary.vehicles : [];
+    live.matches=state.index ? matchLiveJourneys(state.index,live.vehicles,Date.now()) : new Map();
+    const selectedVehicle=live.vehicles.find(v=>v.id===live.selectedId);
+    // A train id can be reused for another run. Never attach that new point to
+    // an old selected itinerary if its route or unique service date changes.
+    if(selectedVehicle && (currentIdentity(selectedVehicle)!==live.selectedSignature ||
+       (live.selectedKey && live.matches.get(live.selectedId)?.key!==live.selectedKey))) {
+      live.selectedId=null;live.selectedKey=null;live.selectedSignature='';
+      if(!state.selected){drawing.clearLayers();timetableElement('timetableJourneyMeta').textContent='Ya no se puede verificar que sea la misma circulación.';}
+    }
+    renderCurrentList();renderCurrentMap();updateCurrentStatus(summary);
+    if(state.selected)updateResults({preserveSelection:true});
+    else if(live.selectedId && !live.vehicles.some(v=>v.id===live.selectedId)) {
+      drawing.clearLayers();timetableElement('timetableJourneyMeta').textContent='Ya no aparece en la instantánea actual; esto no confirma que haya terminado.';
+    }
+    clearTimeout(live.expiry);live.expiry=null;
+    if(live.status==='ready' && currentCanPoll()) {
+      const deadlines=[summary.cercanias,summary.larga].filter(f=>['fresh','partial'].includes(f.status)).map(f=>f.header_timestamp*1000+90001);
+      deadlines.push(...live.vehicles.map(v=>v.observed_at*1000+90001));
+      if(deadlines.length)live.expiry=setTimeout(updateCurrentFromPayload,Math.max(1,Math.min(...deadlines)-Date.now()));
+    }
+  }
+  function stopCurrentPolling() {
+    const live=state.current;clearTimeout(live.timer);clearTimeout(live.expiry);live.timer=null;live.expiry=null;
+    live.sequence++;live.busy=false;live.payload=null;live.vehicles=[];live.matches=new Map();live.status='paused';
+    renderCurrentList();renderCurrentMap();updateCurrentStatus();
+  }
+  async function refreshCurrentFleet() {
+    const live=state.current;if(!currentCanPoll()||live.busy)return;
+    live.busy=true;const sequence=++live.sequence;
+    if(!live.payload){live.status='loading';updateCurrentStatus();}
+    try {
+      const payload=await fetchRadarPositions('espana');
+      if(sequence!==live.sequence || !currentCanPoll())return;
+      live.payload=payload;updateCurrentFromPayload();
+    } catch(_) {
+      if(sequence!==live.sequence || !currentCanPoll())return;
+      live.payload=null;live.vehicles=[];live.matches=new Map();live.status='error';
+      renderCurrentList();renderCurrentMap();updateCurrentStatus();
+      if(state.selected && live.selectedId)updateResults({preserveSelection:true});
+    } finally {
+      if(sequence===live.sequence){live.busy=false;clearTimeout(live.timer);if(currentCanPoll())live.timer=setTimeout(refreshCurrentFleet,LIVE_POLL_MS);}
+    }
+  }
+  function selectCurrent(id) {
+    const live=state.current,vehicle=live.vehicles.find(v=>v.id===id);if(!vehicle)return;
+    live.selectedId=id;live.selectedKey=null;live.selectedSignature=currentIdentity(vehicle);
+    const journey=live.matches.get(id);
+    state.windowEnd=Date.now();timetableElement('timetableRange').value='1440';
+    if(journey) {
+      selectJourney(journey,{liveId:id});
+    } else {
+      state.selectionVersion++;stopAuto();state.selected=null;state.boardValues.clear();state.stationStates.clear();state.lastCycle=null;state.markers.clear();drawing.clearLayers();
+      timetableElement('timetableJourneyHeading').textContent=currentName(vehicle);
+      timetableElement('timetableJourneyMeta').textContent=`${currentRoute(vehicle)} · sin itinerario GTFS inequívoco`;
+      timetableElement('timetableBoardRefresh').disabled=true;
+      timetableElement('timetableBoardStatus').textContent='Sin paradas asociadas con seguridad; no se inventan horarios.';
+      const cell=timetableNode('td','La fuente muestra este tren, pero no hay una coincidencia única de recorrido y horario.');cell.colSpan=3;
+      const row=timetableNode('tr');row.append(cell);timetableElement('timetableStops').replaceChildren(row);
+      const stops=state.index?.metadata?.stops || [],origin=timetableBoardCode(vehicle.origin_code),destination=timetableBoardCode(vehicle.destination_code);
+      const start=!vehicle.route_ambiguous && origin ? stops.find(s=>timetableBoardCode(s[0])===origin) : null;
+      const end=!vehicle.route_ambiguous && destination ? stops.find(s=>timetableBoardCode(s[0])===destination) : null;
+      const points=[[vehicle.latitude,vehicle.longitude]];
+      if(start && end && [start[2],start[3],end[2],end[3]].every(Number.isFinite)) {
+        const endpoints=[[start[2],start[3]],[end[2],end[3]]];L.polyline(endpoints,{color:'#32a893',weight:3,opacity:.8,dashArray:'6 8',interactive:false}).addTo(drawing);
+        for(const point of endpoints)L.circleMarker(point,{radius:5,color:'#fff',weight:2,fillColor:'#edab58',fillOpacity:1}).addTo(drawing);
+        points.push(...endpoints);
+      }
+      timetableElement('timetableMapNotice').textContent='Punto de la instantánea actual; si hay línea, solo une origen y destino, no representa el trazado real.';
+      const bounds=L.latLngBounds(points);if(points.length>1)map.fitBounds(bounds,{padding:[35,35],maxZoom:10,animate:false});else map.setView(points[0],9,{animate:false});
+      updateClock();renderList();renderCurrentList();renderCurrentMap();
+      if(window.matchMedia?.('(max-width:650px)').matches)timetableElement('timetableJourneyHeading').scrollIntoView({behavior:'smooth',block:'center'});
+    }
+  }
+  timetableElement('timetableCurrentSearch').addEventListener('input',()=>{state.current.limit=8;renderCurrentList();renderCurrentMap();updateCurrentStatus();});
+  timetableElement('timetableCurrentType').addEventListener('change',()=>{state.current.limit=8;renderCurrentList();renderCurrentMap();updateCurrentStatus();});
+  timetableElement('timetableCurrentMap').addEventListener('change',renderCurrentMap);
+  timetableElement('timetableCurrentMore').addEventListener('click',()=>{state.current.limit+=8;renderCurrentList();});
   timetableElement('timetableRange').addEventListener('input',()=>{state.limit=12;updateResults();});
   timetableElement('timetableSearch').addEventListener('input',()=>{state.limit=12;updateResults();});
   for(const id of ['timetableAV','timetableCommuter'])timetableElement(id).addEventListener('change',()=>{state.limit=12;updateResults();});
@@ -288,8 +444,8 @@ export async function initializeTimetableView(setupBasemap) {
     updateResults({preserveSelection:true});
   }
   document.addEventListener('visibilitychange',()=>{
-    if(document.hidden)pauseAuto();
-    else if(state.active){advanceWindow();if(state.selected)refreshBoards();}
+    if(document.hidden){pauseAuto();stopCurrentPolling();}
+    else if(state.active){advanceWindow();refreshCurrentFleet();if(state.selected)refreshBoards();}
   });
   for(const button of document.querySelectorAll('[data-timetable-offset]'))button.addEventListener('click',()=>{
     state.windowEnd=Date.now();timetableElement('timetableRange').value=String(1440-Number(button.dataset.timetableOffset)*60);
@@ -321,9 +477,10 @@ export async function initializeTimetableView(setupBasemap) {
       state.active=true;
       requestAnimationFrame(()=>map.invalidateSize({animate:false}));
       advanceWindow();
+      if(!document.hidden)refreshCurrentFleet();
       if(state.selected && !document.hidden)refreshBoards();else updateBoardStatus();
     },
-    hide(){state.active=false;pauseAuto();},
+    hide(){state.active=false;pauseAuto();stopCurrentPolling();},
     map,
   };
 }
